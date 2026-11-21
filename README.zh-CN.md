@@ -93,6 +93,49 @@ corepack pnpm build   # 产物在 dist/
 
 清除浏览器站点数据会**全部清空**。重要对话请先用「导出所有历史对话」备份。
 
+## 安卓 App
+
+同一套前端也用 [Capacitor](https://capacitorjs.com) 8 套壳成了安卓 App。包名 `chat.bigfatfish.app`，minSdk 24，targetSdk 36。
+
+### 界面可以两种方式加载
+
+`capacitor.config.ts` 两种都支持，切换只要一条命令，不用改代码：
+
+| 方式 | 界面从哪来 | 打开要联网 | 改代码要重新打包 |
+|---|---|---|---|
+| **A（默认）** | `dist/` 打进 APK | 不要 | 要 |
+| **B** | 你自己部署的网址（如 GitHub Pages） | 要 | 不要 |
+
+```sh
+# A：把构建产物打进 APK
+corepack pnpm cap:sync
+
+# B：让 WebView 直接加载你部署好的网址
+$env:APP_SERVER_URL="https://你的站点.pages.dev"
+corepack pnpm cap:sync
+```
+
+方式 B 必须是 HTTPS 地址（明文回退已主动关闭）。
+
+### 打一个 APK
+
+必须用 **JDK 21** —— JDK 17 会报 `invalid source release: 21`，JDK 25 会报 `Unsupported class file major version 69`。
+
+```sh
+corepack pnpm cap:apk      # 构建 dist -> 同步 -> gradlew assembleDebug
+```
+
+产物在 `android/app/build/outputs/apk/debug/app-debug.apk`。
+
+这个 debug 包不能直接发布，分发前要配自己的 keystore 签名。
+
+### 安卓端的特有行为
+
+- **状态栏**完全透明，WebView 铺满整屏。页面用 `viewport-fit=cover` 加 `env(safe-area-inset-*)`，壁纸能铺到屏幕边缘。曾经试过给 WebView 加 padding 的做法，会把内容整体推下去、露出一条灰带，已撤销，原因写在 `MainActivity.java` 的注释里。
+- **视频壁纸的亮度自动取样在安卓 WebView 里不工作**：`canvas.drawImage(video)` 会抛 `SecurityError`，因为硬件解码的画面进不了可读的 canvas。兜底是固定 45% 白纱，文字可读但深色壁纸会被洗白。这是平台限制，不是 bug。
+
+安卓层另有一批平台特有的坑（edge-to-edge 状态栏、CSS Module 的 hash 不匹配、JDK 与 Gradle wrapper 的要求），动这块之前先看 [`docs/android-notes.md`](docs/android-notes.md)。
+
 ## 开发
 
 ```sh

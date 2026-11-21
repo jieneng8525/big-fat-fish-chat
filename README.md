@@ -93,6 +93,49 @@ Everything stays on your machine. Nothing is uploaded anywhere.
 
 Clearing browser site data **wipes all of it**. Back up important conversations with "Export all conversation history" first.
 
+## Android app
+
+The same frontend also ships as an Android app, wrapped with [Capacitor](https://capacitorjs.com) 8. Package id `chat.bigfatfish.app`, minSdk 24, targetSdk 36.
+
+### Two ways the app can load its UI
+
+`capacitor.config.ts` supports both, and switching costs one command — no code changes:
+
+| Mode | UI comes from | Needs network to open | Code change needs rebuild |
+|---|---|---|---|
+| **A (default)** | `dist/` bundled into the APK | No | Yes |
+| **B** | A URL you host (e.g. GitHub Pages) | Yes | No |
+
+```sh
+# A: bundle the built site into the APK
+corepack pnpm cap:sync
+
+# B: point the WebView at your deployed site instead
+$env:APP_SERVER_URL="https://your-site.pages.dev"
+corepack pnpm cap:sync
+```
+
+Mode B requires an HTTPS URL (cleartext fallback is disabled on purpose).
+
+### Build an APK
+
+Requires **JDK 21** — JDK 17 fails with `invalid source release: 21`, JDK 25 with `Unsupported class file major version 69`.
+
+```sh
+corepack pnpm cap:apk      # build dist -> sync -> gradlew assembleDebug
+```
+
+Output: `android/app/build/outputs/apk/debug/app-debug.apk`
+
+The debug APK is unsigned for release purposes; add your own keystore before distributing.
+
+### Android-specific behaviour
+
+- **Status bar** is fully transparent and the WebView draws edge to edge. The page uses `viewport-fit=cover` plus `env(safe-area-inset-*)`, so the wallpaper reaches the screen edge. See the note in `MainActivity.java` for the padding approach that was tried and reverted.
+- **Automatic wallpaper brightness sampling does not work in Android WebView** for video wallpapers: `canvas.drawImage(video)` throws a `SecurityError` because hardware-decoded frames never enter a readable canvas. The app falls back to a fixed 45% scrim, which keeps text readable but washes out dark wallpapers. This is a platform limitation, not a bug.
+
+The Android layer has its own set of platform traps (edge-to-edge status bar, the CSS Module hash mismatch, the JDK and Gradle wrapper requirements). See [`docs/android-notes.md`](docs/android-notes.md) before changing anything there.
+
 ## Development
 
 ```sh
