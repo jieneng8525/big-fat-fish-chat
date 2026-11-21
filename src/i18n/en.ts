@@ -112,7 +112,13 @@ export const en = {
   apiKeyVerificationFailed: 'Verification failed: {message}',
 
   historyImport: 'Import chat history',
-  historyImportConfirm: 'Import',
+  historyImportAppendLabel: 'Append (keep existing)',
+  historyImportDescriptionAppend: 'Imported chats are merged into the existing ones instead of replacing them. Large archives can be split into smaller parts and appended one by one.',
+  historyAppendConfirmTitle: 'Append this import?',
+  historyAppendConfirmDescription: 'Imported chats will be merged with your existing ones. Chats with the same ID are updated; the rest are kept.',
+  historyAppendConfirm: 'Append',
+  historyAppendedOne: 'Appended 1 chat',
+  historyAppended: 'Appended {count} chats',  historyImportConfirm: 'Import',
   historyImportConfirmTitle: 'Import chat history?',
   historyImportConfirmDescription:
     'The uploaded chat history will replace all your current chats. Import anyway?',

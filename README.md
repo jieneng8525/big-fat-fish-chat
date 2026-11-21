@@ -204,6 +204,7 @@ If you need an APK, build and sign it yourself with a key only you hold. See [`d
 - **Automatically following your desktop wallpaper is impossible**: browsers cannot read which image Wallpaper Engine (or similar) is currently displaying, so you must pick a file manually. See [`docs/desktop-wallpaper-note.md`](docs/desktop-wallpaper-note.md) for the details.
 - **Prompts live in the frontend**: anyone can edit the code to change them, so they are not a security boundary.
 - **No cross-device sync**: data is local, so a new device starts empty unless you export and import manually.
+- **DeepSeek's exported ZIP contains no document originals**: only images are bundled. Document attachments keep their name and size after import but cannot be opened, because there is no file to open. This is a limit of the upstream export format, not of the import code — verified against a real archive (1773 entries: 751 images, 1022 JSON, 0 docx/doc/pdf). See [`src/services/chat/history/README.md`](src/services/chat/history/README.md).
 
 ## Credits
 

@@ -4,21 +4,31 @@ import { useTranslate } from '../../i18n/index.js'
 import { useUploads } from '../../services/attachments.js'
 import { loadFile } from '../../services/chat/db.js'
 import type { FileAttachment } from '../../services/chat/types.js'
+import { isNative, openAttachmentNatively } from '../../services/nativeShell.js'
 import { IconPhotoErrorFill20, IconRefreshOutline16 } from '../base/icons.js'
 import { Tooltip } from '../base/Tooltip.js'
 import { FileCard } from '../files/FileCard.js'
 import styles from './MessageFile.module.css'
 
-/** 原件从 IndexedDB 读出并生成本地地址；undefined 表示加载中，null 表示原件缺失。 */
-const useFileUrl = (id: string) => {
-  const [fileUrl, setFileUrl] = useState<{ id: string; url: string | null } | null>(null)
+/**
+ * 原件从 IndexedDB 读出并生成本地地址。
+ *
+ * 同时返回 blob 本体：安卓端打开附件时要把它写成临时文件交给系统，
+ * 只靠 blob URL 在 WebView 之外拿不到内容（见 nativeShell.openAttachmentNatively）。
+ *
+ * url 为 undefined 表示加载中，null 表示原件缺失。
+ */
+const useFileUrl = (id: string): { url: string | null | undefined; blob: Blob | null } => {
+  const [state, setState] = useState<{ id: string; url: string | null; blob: Blob | null } | null>(
+    null
+  )
   useEffect(() => {
     let objectUrl: string | null = null
     let cancelled = false
     loadFile(id).then((blob) => {
       if (!cancelled) {
         objectUrl = blob ? URL.createObjectURL(blob) : null
-        setFileUrl({ id, url: objectUrl })
+        setState({ id, url: objectUrl, blob: blob ?? null })
       }
     })
     return () => {
@@ -28,7 +38,8 @@ const useFileUrl = (id: string) => {
       }
     }
   }, [id])
-  return fileUrl?.id === id ? fileUrl.url : undefined
+  const ready = state?.id === id
+  return { url: ready ? state.url : undefined, blob: ready ? state.blob : null }
 }
 
 /** 历史或失效附件的补传状态：只在还没有 serverId 时显示 */
@@ -56,7 +67,7 @@ export const MessageFile = ({
   onRetry: (() => void) | null
 }) => {
   const t = useTranslate()
-  const url = useFileUrl(file.id)
+  const { url, blob } = useFileUrl(file.id)
   const [failedUrl, setFailedUrl] = useState<string | null>(null)
   const upload = useUploadState(file)
   const uploading = upload?.status === 'uploading'
@@ -65,6 +76,31 @@ export const MessageFile = ({
   const errorText = failed ? t(upload.error.key, upload.error.params) : undefined
 
   const retry = retryable ? onRetry : null
+
+  /**
+   * 打开原件。
+   *
+   * 网页端：window.open(blobUrl) 开新标签页，行为正常。
+   * App 端：WebView 会把 target="_blank" 交给系统，而 blob: URL 只在当前
+   *   WebView 进程内有效，系统那边拿不到内容 —— 表现为「点了没反应」。
+   *   实测确认过：图片和文档都是这个原因。
+   *   所以改成把 Blob 写成临时文件，用 Intent.ACTION_VIEW 交给系统应用打开。
+   */
+  const open = () => {
+    if (!url) {
+      return
+    }
+    if (isNative() && blob) {
+      void openAttachmentNatively(file.id, blob, file.name).then((ok) => {
+        if (!ok) {
+          // 系统打不开（没有对应应用）时退回新窗口，至少网页端能用
+          window.open(url, '_blank', 'noreferrer')
+        }
+      })
+      return
+    }
+    window.open(url, '_blank', 'noreferrer')
+  }
 
   if (file.isImage && url !== null) {
     const preview = url ? (
@@ -134,17 +170,17 @@ export const MessageFile = ({
       )
     }
 
-    // 正常态：链接到原件
+    // 正常态：点击打开原件（App 内交给系统应用，网页端开新标签页）
     return url ? (
-      <a
+      <button
+        type="button"
         className={clsx(styles.image, styles.imageThumb)}
-        href={url}
-        target="_blank"
-        rel="noreferrer"
+        onClick={open}
         title={file.name}
+        aria-label={file.name}
       >
         {preview}
-      </a>
+      </button>
     ) : (
       // 原件还没加载出来（极短暂）
       <div className={styles.image} />
@@ -158,7 +194,7 @@ export const MessageFile = ({
       status={uploading ? 'uploading' : failed ? 'error' : 'done'}
       error={errorText}
       onRetry={retry ?? undefined}
-      onOpen={url && !upload ? () => window.open(url, '_blank', 'noreferrer') : undefined}
+      onOpen={url && !upload ? open : undefined}
     />
   )
 }

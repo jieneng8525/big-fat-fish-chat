@@ -200,6 +200,7 @@ corepack pnpm build   # 生产构建
 - **壁纸自动跟随桌面壁纸做不到**：浏览器读不到 Wallpaper Engine 等软件当前显示的是哪张图，只能手动在目录里选一个文件。原因详见 [`docs/desktop-wallpaper-note.md`](docs/desktop-wallpaper-note.md)。
 - **提示词在前端**：用户改一下代码就能改，不能当作安全边界。
 - **没有多端同步**：数据在本机，换设备就是空的，除非手动导出导入。
+- **DeepSeek 导出的 ZIP 里没有文档原件**：包里只有图片。文档类附件导入后能看到文件名和大小，但点了打不开——因为根本没有文件可打开。这是上游导出格式的限制，不是导入代码或设计的问题；实测一份真实归档 1773 个条目：图片 751、JSON 1022、docx/doc/pdf **0**。详见 [`src/services/chat/history/README.md`](src/services/chat/history/README.md)。
 
 ## 致谢
 

@@ -180,3 +180,55 @@ export const openHtmlNatively = async (html: string, fileName: string): Promise<
     return false
   }
 }
+
+/** 附件缓存目录：打开过的图片/文档临时落在这里，下次同名直接复用 */
+const ATTACH_DIR = 'attach'
+
+/**
+ * 在 App 里打开一个附件（图片或文档），交给系统看图器/文档应用。
+ *
+ * 为什么不能直接 window.open(blobUrl, '_blank')：
+ *   Capacitor 的 WebView 会把 target="_blank" 当新窗口处理，
+ *   而 blob: URL 只存在于当前 WebView 进程内，系统浏览器拿不到，
+ *   表现出来就是「点了没反应」（图片和文档都是这个原因，实测确认）。
+ *
+ * 做法：把 Blob 写进缓存目录 → FileProvider 转 content:// → Intent.ACTION_VIEW。
+ * 系统按 mime 类型挑合适的应用打开，用户按返回回到大肥鱼Chat。
+ *
+ * 用 id 做文件名，同一附件重复打开不会堆积临时文件。
+ */
+export const openAttachmentNatively = async (
+  id: string,
+  blob: Blob,
+  fileName: string
+): Promise<boolean> => {
+  if (!isNative()) {
+    return false
+  }
+  try {
+    const { Filesystem, Directory } = await import('@capacitor/filesystem')
+    // 保留原扩展名，系统靠它和 mime 一起决定用什么应用打开
+    const safeName = fileName.replace(/[/\\:*?"<>|]/g, '_')
+    const path = `${ATTACH_DIR}/${id}_${safeName}`
+    const mime = blob.type || 'application/octet-stream'
+    const data = await blobToBase64(blob)
+    await Filesystem.writeFile({
+      path,
+      data,
+      directory: Directory.Cache,
+      recursive: true,
+    })
+    const plugin = (
+      Capacitor as unknown as {
+        Plugins?: { OpenInBrowser?: { open: (o: { path: string; mime: string }) => Promise<unknown> } }
+      }
+    ).Plugins?.OpenInBrowser
+    if (!plugin) {
+      return false
+    }
+    await plugin.open({ path, mime })
+    return true
+  } catch {
+    return false
+  }
+}

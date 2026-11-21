@@ -28,8 +28,19 @@
   container-type: inline-size;
 }
 
+/*
+ * 缩略图也可以是 button（点开原件）。button 自带 padding / border / 背景，
+ * 不重置会破坏 .image 的圆角与溢出裁剪，所以这里显式抹平。
+ */
 button.image {
   cursor: pointer;
+  padding: 0;
+  border: 1px solid var(--dsw-alias-border-l2);
+  background-color: var(--dsw-alias-markdown-placeholder);
+  font: inherit;
+  color: inherit;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .failedIcon {

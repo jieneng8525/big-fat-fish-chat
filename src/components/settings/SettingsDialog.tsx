@@ -354,9 +354,14 @@ const ImportConfirm = ({
   historyImport: ReturnType<typeof useHistoryImport>
 }) => {
   const t = useTranslate()
+  /*
+   * 覆盖模式用红色按钮（会清空现有会话，是破坏性操作）；
+   * 追加模式只是并入，不该用警示色——那会把正常操作画成危险操作。
+   */
+  const append = historyImport.append
   return (
     <Modal
-      title={t('historyImportConfirmTitle')}
+      title={t(append ? 'historyAppendConfirmTitle' : 'historyImportConfirmTitle')}
       className={styles.importConfirm}
       onClose={historyImport.cancel}
       footer={
@@ -364,13 +369,19 @@ const ImportConfirm = ({
           <Button variant="outlined" size="m" autoFocus onClick={historyImport.cancel}>
             {t('cancel')}
           </Button>
-          <Button variant="dangerOutlined" size="m" onClick={() => void historyImport.confirm()}>
-            {t('historyImportConfirm')}
+          <Button
+            variant={append ? 'primary' : 'dangerOutlined'}
+            size="m"
+            onClick={() => void historyImport.confirm()}
+          >
+            {t(append ? 'historyAppendConfirm' : 'historyImportConfirm')}
           </Button>
         </>
       }
     >
-      <div className={styles.importConfirmText}>{t('historyImportConfirmDescription')}</div>
+      <div className={styles.importConfirmText}>
+        {t(append ? 'historyAppendConfirmDescription' : 'historyImportConfirmDescription')}
+      </div>
     </Modal>
   )
 }
@@ -469,10 +480,20 @@ const SettingCell = ({
   )
 }
 
-/** 选文件后先提示覆盖；确认后才检查文件并执行导入，任何错误都提示导入失败。 */
+/**
+ * 选文件后先弹确认；确认后才检查文件并执行导入，任何错误都提示导入失败。
+ *
+ * append = false（默认）：**覆盖**——用这个归档替换本地全部会话与附件。
+ * append = true：**追加**——保留已有会话，把归档内容并进去。
+ *
+ * 为什么要有追加：安卓 WebView 读不了超过约 200–300 MB 的 File/Blob
+ * （实测 200 MB 可读、300 MB 抛错），官方导出的大归档一次性导入必然失败。
+ * 拆成几个小包逐个追加，就能把整个归档导进来。
+ */
 const useHistoryImport = () => {
   const [file, setFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
+  const [append, setAppend] = useState(false)
   const [status, setStatus] = useState<Status>(null)
   const importing = useRef(false)
 
@@ -481,12 +502,22 @@ const useHistoryImport = () => {
       return
     }
     importing.current = true
+    const useAppend = append
     setFile(null)
     setBusy(true)
     setStatus(null)
     try {
-      const count = await importHistory(file)
-      setStatus({ key: count === 1 ? 'historyImportedOne' : 'historyImported', params: { count } })
+      const count = await importHistory(file, useAppend)
+      setStatus({
+        key: useAppend
+          ? count === 1
+            ? 'historyAppendedOne'
+            : 'historyAppended'
+          : count === 1
+            ? 'historyImportedOne'
+            : 'historyImported',
+        params: { count },
+      })
     } catch {
       setStatus({ key: 'historyImportFailed', error: true })
     } finally {
@@ -495,10 +526,25 @@ const useHistoryImport = () => {
     }
   }
 
-  return { file, busy, status, select: setFile, cancel: () => setFile(null), confirm }
+  return {
+    file,
+    busy,
+    status,
+    append,
+    setAppend,
+    select: setFile,
+    cancel: () => setFile(null),
+    confirm,
+  }
 }
 
-/** 导入 = 覆盖：用选中文件替换本地全部会话与附件。 */
+/**
+ * 导入历史对话。
+ *
+ * 默认「覆盖」：用选中文件替换本地全部会话与附件。
+ * 勾选「追加」后保留已有会话，把归档内容并进去——
+ * 用于大归档拆成小包后逐个导入（安卓 WebView 读不动 200 MB 以上的文件）。
+ */
 const ImportHistory = ({
   historyImport,
   disabled,
@@ -512,10 +558,21 @@ const ImportHistory = ({
   return (
     <SettingCell
       label={t('historyImport')}
-      description={t('historyImportDescription')}
+      description={
+        historyImport.append ? t('historyImportDescriptionAppend') : t('historyImportDescription')
+      }
       status={historyImport.status}
       action={
         <>
+          <label className={styles.appendToggle}>
+            <input
+              type="checkbox"
+              checked={historyImport.append}
+              disabled={disabled}
+              onChange={(event) => historyImport.setAppend(event.target.checked)}
+            />
+            {t('historyImportAppendLabel')}
+          </label>
           <Button
             variant="outlined"
             size="m"

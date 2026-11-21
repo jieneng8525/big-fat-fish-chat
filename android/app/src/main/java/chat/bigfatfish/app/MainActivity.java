@@ -5,6 +5,9 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.Window;
 import android.view.WindowManager;
+import android.webkit.WebView;
+import android.window.OnBackInvokedCallback;
+import android.window.OnBackInvokedDispatcher;
 
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
@@ -30,6 +33,49 @@ import com.getcapacitor.BridgeActivity;
  */
 public class MainActivity extends BridgeActivity {
 
+    /**
+     * 返回键：先关掉网页里打开的那一层，都没有才退出。
+     *
+     * ⚠ 不能用 onBackPressed()。targetSdk 36（>= 33）时系统走
+     * OnBackInvokedDispatcher，Activity.onBackPressed 根本不会被调用 ——
+     * 实测那样写之后按返回键仍然直接退出到桌面。
+     *
+     * 网页是单页应用（没有 history.pushState），所以不依赖 canGoBack；
+     * 改为问 window.__dshHandleBack（main.tsx 里挂载）：
+     *   true  → 它关掉了设置弹窗/搜索面板/侧边栏，本次消费，不退出
+     *   false → 没有可关的，交回系统默认行为（结束 App）
+     *
+     * evaluateJavascript 是异步的，多出的几毫秒用户感知不到，
+     * 但比「按一下就掉出 App」好得多。
+     */
+    private void setupBackNavigation() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            // API 33 以下没有 OnBackInvokedDispatcher，旧路径仍然有效，
+            // 交给 Activity.onBackPressed 的默认实现即可（这里不覆写）。
+            return;
+        }
+        OnBackInvokedCallback callback = () -> {
+            final WebView webView = getBridge() != null ? getBridge().getWebView() : null;
+            if (webView == null) {
+                finish();
+                return;
+            }
+            webView.evaluateJavascript(
+                "(function(){try{return window.__dshHandleBack?window.__dshHandleBack():false}catch(e){return false}})()",
+                value -> {
+                    boolean handled = value != null && value.contains("true");
+                    if (!handled) {
+                        runOnUiThread(this::finish);
+                    }
+                }
+            );
+        };
+        getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+            OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+            callback
+        );
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         /*
@@ -48,6 +94,8 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(ShareFilePlugin.class);
 
         super.onCreate(savedInstanceState);
+
+        setupBackNavigation();
 
         Window window = getWindow();
 

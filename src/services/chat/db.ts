@@ -388,10 +388,22 @@ export const updateStagingFileTypes = async (types: ReadonlyMap<string, string>)
 }
 
 /**
- * 导入完成后用暂存替换正式数据：同一事务中替换会话、摘要和原件，并清空暂存。
+ * 导入完成后把暂存数据搬进正式库。
+ *
+ * append = false（默认）：先把正式数据清空，即「替换」。这是原有行为。
+ * append = true：**不清空**，把本次暂存的内容并入已有数据，即「追加/接续」。
+ *
+ * 为什么需要 append：安卓 WebView 对超过约 200–300 MB 的 File/Blob 无法切片读取
+ * （实测 200 MB 可读、300 MB 抛 "The requested file could not be read"）。
+ * 官方导出的大归档轻易就超过这个量级，一次性导入必然失败。
+ * 允许用户把一个归档拆成多个小包、逐个追加导入，就能绕开这个平台上限。
+ *
+ * 追加模式下同 id 的记录用 put 覆盖（下面就是 put），因此重复导入同一个包
+ * 不会报错，只会用新内容刷新同名会话；不会产生重复条目。
+ *
  * 逐条游标复制，同一时间只读取一条记录；事务失败时整体回滚，正式数据不变。
  */
-export const commitStaging = async (): Promise<SessionSummary[]> => {
+export const commitStaging = async (append = false): Promise<SessionSummary[]> => {
   const summaries: SessionSummary[] = []
   const tx = (await getDB()).transaction(
     ['sessions', 'sessionSummaries', 'files', 'sessionsStaging', 'filesStaging'],
@@ -400,9 +412,12 @@ export const commitStaging = async (): Promise<SessionSummary[]> => {
   const move = async (from: 'sessionsStaging' | 'filesStaging', to: 'sessions' | 'files') => {
     try {
       const target = tx.objectStore(to)
-      await target.clear()
-      if (to === 'sessions') {
-        await tx.objectStore('sessionSummaries').clear()
+      if (!append) {
+        // 替换模式：先清空正式数据，再整体搬入
+        await target.clear()
+        if (to === 'sessions') {
+          await tx.objectStore('sessionSummaries').clear()
+        }
       }
       for (
         let cursor = await tx.objectStore(from).openCursor();

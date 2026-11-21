@@ -426,10 +426,19 @@ const waitForIdle = (sessionId?: string) =>
   })
 
 /**
- * 替换历史对话：先写入暂存，成功后原子替换旧记录；写入为空即删除全部会话与附件。
- * 期间停止生成并禁止修改会话；失败时清除暂存，保留原有记录。
+ * 写入历史对话：先写入暂存，成功后提交到正式库。
+ *
+ * append = false（默认）：**替换**——清空原有会话，写入为空即删除全部。
+ * append = true：**追加**——保留原有会话，把本次内容并入。
+ *   用途见 db.commitStaging 注释：大归档在安卓 WebView 里读不动，
+ *   用户可以把归档拆成多个小包，逐个追加导入。
+ *
+ * 两种模式下期间都停止生成、禁止修改会话；失败时清除暂存、保留原有记录。
  */
-export const replaceHistory = async (write: () => Promise<void>): Promise<number> => {
+export const replaceHistory = async (
+  write: () => Promise<void>,
+  append = false
+): Promise<number> => {
   if (get().importingHistory) {
     throw new Error('History replacement is already in progress')
   }
@@ -448,7 +457,7 @@ export const replaceHistory = async (write: () => Promise<void>): Promise<number
     let summaries: SessionSummary[]
     try {
       await write()
-      summaries = await db.commitStaging()
+      summaries = await db.commitStaging(append)
     } catch (error) {
       await db.clearStaging().catch(db.reportStorageError('clear unfinished history replacement'))
       throw error
@@ -457,10 +466,16 @@ export const replaceHistory = async (write: () => Promise<void>): Promise<number
     unsavedSessions.clear()
     pendingFiles.clear()
     clearAllDrafts()
+    /*
+     * 追加模式下 summaries 只含本次导入的那部分。
+     * 列表若只塞这一次的结果，界面会显得原有会话全没了——虽然数据还在库里。
+     * 所以追加时重新读一次全部摘要，与库里的真实状态对齐。
+     */
+    const list = append ? await db.loadSessionSummaries() : summaries
     set({
       ready: true,
       initError: false,
-      sessions: sortSessions(summaries),
+      sessions: sortSessions(list),
       sessionCache: {},
       sessionLoadErrors: {},
       sessionSaveErrors: {},
