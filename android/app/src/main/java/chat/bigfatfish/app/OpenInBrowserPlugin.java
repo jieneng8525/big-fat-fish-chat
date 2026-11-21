@@ -17,7 +17,7 @@ import java.io.File;
  * 用系统浏览器打开一个本机 HTML 文件。
  *
  * 为什么需要这个插件，而不是直接用 Web 层的方案：
- * 三种 Web 层尝试都实测失败（见 docs/android-pending-issues.md）：
+ * 三种 Web 层尝试都实测失败（见 docs/android-notes.md）：
  *   window.open(blobUrl)             → 系统接管成内嵌窗口，按返回直接退出 App
  *   Browser.open('data:text/html')   → "Unable to display URL"（CustomTabs 拒绝 data:）
  *   location.href = blobUrl          → 不生成历史记录，返回仍退出
