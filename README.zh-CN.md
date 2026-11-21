@@ -2,6 +2,10 @@
 
 [English](README.md) | 简体中文
 
+**▶ 在线使用：<https://big-fat-fish-chat.pages.dev/>**
+
+大肥鱼自己做的一个 DeepSeek 聊天客户端。自带 API Key 即可使用，不用注册、不经过任何第三方服务器。
+
 基于 [DeepSeek](https://www.deepseek.com) 官方 API 的**纯静态**聊天客户端。
 
 **没有后端**——浏览器直接连 `api.deepseek.com`，你的 Key 只存在自己浏览器的 localStorage 里，不经过任何第三方服务器。整个站点就是几个静态文件，扔到任何静态托管上就能用。

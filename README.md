@@ -2,6 +2,10 @@
 
 English | [简体中文](README.zh-CN.md)
 
+**▶ Try it now: <https://big-fat-fish-chat.pages.dev/>**
+
+Built and maintained by 大肥鱼 (Big Fat Fish). Bring your own DeepSeek API key — no sign-up, no server of ours.
+
 A **fully static** chat client built on the official [DeepSeek](https://www.deepseek.com) API.
 
 **No backend.** The browser talks to `api.deepseek.com` directly, and your API key lives only in your own browser's localStorage — it never passes through any third-party server. The whole site is a handful of static files you can drop onto any static host.
