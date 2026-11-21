@@ -97,25 +97,44 @@ Clearing browser site data **wipes all of it**. Back up important conversations 
 
 The same frontend also ships as an Android app, wrapped with [Capacitor](https://capacitorjs.com) 8. Package id `chat.bigfatfish.app`, minSdk 24, targetSdk 36.
 
-### Two ways the app can load its UI
+### Two ways the app can load its UI (remote URLs must be Android-only)
 
-`capacitor.config.ts` supports both, and switching costs one command — no code changes:
+`capacitor.config.ts` supports both; switching costs one command:
 
 | Mode | UI comes from | Needs network to open | Code change needs rebuild |
 |---|---|---|---|
 | **A (default)** | `dist/` bundled into the APK | No | Yes |
-| **B** | A URL you host (e.g. GitHub Pages) | Yes | No |
+| **B** | A URL you host | Yes | No |
 
 ```sh
 # A: bundle the built site into the APK
 corepack pnpm cap:sync
 
-# B: point the WebView at your deployed site instead
-$env:APP_SERVER_URL="https://your-site.pages.dev"
+# B: point the WebView at a remote URL (path must contain /android)
+$env:APP_SERVER_URL="https://your-site.pages.dev/android/"
 corepack pnpm cap:sync
 ```
 
-Mode B requires an HTTPS URL (cleartext fallback is disabled on purpose).
+#### ⚠ Mode B requires a `/android/` path — anything else fails the build
+
+**The app cannot share one deployment with the desktop web build or the mobile web build.**
+Setting an address without `/android` in the path makes `cap sync` throw and refuse to build.
+The reason is that sharing it fails *silently*, not loudly:
+
+- Capacitor injects its native plugins only for the app's own origin. On a remote page,
+  `window.Capacitor.isNativePlatform()` **still returns `true`** (it reports the device, not
+  the page), so the code takes the native branch while the plugins are unavailable — download,
+  share and "open HTML in browser" all break, **with no error shown**.
+- Every Android fix here depends on the native side: edge-to-edge insets, FileProvider
+  sharing, storage permissions, preview theming.
+- The web build and the app build have different capability sets. `supportsDirectoryFollow()`
+  deliberately hides the directory-follow control inside the app; a shared web build would
+  render it again and it would not work.
+
+So build a separate copy for Android and deploy it under `/android/`. The URL must also be
+HTTPS (cleartext fallback is disabled on purpose).
+
+With no `APP_SERVER_URL` set, the bundled `dist` is used — the default and the most robust path.
 
 ### Build an APK
 

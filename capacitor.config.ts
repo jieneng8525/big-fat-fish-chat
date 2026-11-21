@@ -3,33 +3,68 @@ import type { CapacitorConfig } from '@capacitor/cli'
 /**
  * Capacitor 配置。
  *
- * 两种运行方式，差别只有 webDir 里的内容从哪来：
+ * 安卓端加载界面的地址必须是「安卓专用」的，不能和 PC 网页端、移动网页端共用同一份。
  *
- *   A（当前）：webDir 指向构建产物 dist，打包进 APK。
- *     界面在本地，秒开，离线也能打开；发消息仍然需要联网（模型在服务端）。
+ * 为什么不共用：
+ * 1. Capacitor 的原生插件只注入给 App 自己的源。远程页面里
+ *    window.Capacitor.isNativePlatform() 仍返回 true（它判断设备，不判断页面），
+ *    于是 src/services/export.ts 与 nativeShell.ts 会走进原生分支，而插件不可用 ——
+ *    下载、分享、用浏览器打开 HTML 全部失效，且无报错无提示。
+ * 2. 本项目所有安卓修复都依赖原生侧：edge-to-edge 安全区、FileProvider 分享、
+ *    存储权限、预览配色。
+ * 3. 网页版与 App 端能力集不同。supportsDirectoryFollow() 在 App 里主动隐藏
+ *    「跟随目录」入口；远程页面如果是通用那份，会把这个不可用的按钮又渲染出来。
  *
- *   B（以后）：设了 APP_SERVER_URL 后，WebView 直接加载该网址。
- *     改代码不用重新打包，但要联网才能打开。
+ * 规则：
+ * - 不设 APP_SERVER_URL              → 用内置 dist（打进 APK，离线可用）
+ * - 设了且路径含 /android           → 加载该地址（应为专门给安卓构建的那份）
+ * - 设了但路径不含 /android         → **直接抛错，拒绝构建**
  *
- * 切换方式（不需要改这个文件）：
- *   A：corepack pnpm cap:sync
- *   B：$env:APP_SERVER_URL="https://你的域名"; corepack pnpm cap:sync
- *
- * 之所以现在就把开关留出来：实测项目里没有硬编码绝对路径、publicPath 是 'auto'、
- * 且不使用前端路由，这三项正好是 A/B 切换最容易出问题的地方，这里都不存在。
- * 所以切换成本就是一次 sync，代码一行都不用动。
+ * 最后一条是关键：宁可构建失败，也不能「悄悄用通用网页版打包」。
+ * 那种失败在 App 里表现为功能点了没反应，极难排查。
  */
-const serverUrl = (process.env.APP_SERVER_URL ?? '').trim()
+
+/** 远程地址必须落在安卓专用路径下 */
+const ANDROID_PATH_MARKER = '/android'
+
+const raw = (process.env.APP_SERVER_URL ?? '').trim()
+
+if (raw) {
+  let url: URL
+  try {
+    url = new URL(raw)
+  } catch {
+    throw new Error(
+      `APP_SERVER_URL 不是合法地址：${raw}\n` +
+        '应为形如 https://your-site.example/android/ 的绝对 URL。'
+    )
+  }
+  if (url.protocol !== 'https:') {
+    throw new Error(
+      `APP_SERVER_URL 必须是 https（当前：${url.protocol}）。\n` +
+        '明文回退是主动关闭的，避免界面被中间人替换。'
+    )
+  }
+  if (!url.pathname.replace(/\/+$/, '').includes(ANDROID_PATH_MARKER)) {
+    throw new Error(
+      `APP_SERVER_URL 必须指向安卓专用路径，当前是：${url.pathname}\n\n` +
+        '原因：安卓端依赖 Capacitor 原生插件（下载、分享、用浏览器打开 HTML、\n' +
+        '安全区、FileProvider）。通用网页版那份没有配套的安卓侧假设，\n' +
+        '直接拿来用会让这些功能静默失效——不报错，只是点了没反应。\n\n' +
+        '正确做法：给安卓单独构建一份，部署在 /android/ 路径下，例如\n' +
+        '  https://your-site.example/android/'
+    )
+  }
+}
 
 const config: CapacitorConfig = {
   appId: 'chat.bigfatfish.app',
   appName: '大肥鱼Chat',
   webDir: 'dist',
-  ...(serverUrl
+  ...(raw
     ? {
         server: {
-          url: serverUrl,
-          // 远程地址是 https，不允许明文回退
+          url: raw,
           cleartext: false,
         },
       }

@@ -97,25 +97,41 @@ corepack pnpm build   # 产物在 dist/
 
 同一套前端也用 [Capacitor](https://capacitorjs.com) 8 套壳成了安卓 App。包名 `chat.bigfatfish.app`，minSdk 24，targetSdk 36。
 
-### 界面可以两种方式加载
+### 界面可以两种方式加载（远程地址必须是安卓专用）
 
-`capacitor.config.ts` 两种都支持，切换只要一条命令，不用改代码：
+`capacitor.config.ts` 支持两种，切换只要一条命令：
 
 | 方式 | 界面从哪来 | 打开要联网 | 改代码要重新打包 |
 |---|---|---|---|
 | **A（默认）** | `dist/` 打进 APK | 不要 | 要 |
-| **B** | 你自己部署的网址（如 GitHub Pages） | 要 | 不要 |
+| **B** | 你自己部署的网址 | 要 | 不要 |
 
 ```sh
 # A：把构建产物打进 APK
 corepack pnpm cap:sync
 
-# B：让 WebView 直接加载你部署好的网址
-$env:APP_SERVER_URL="https://你的站点.pages.dev"
+# B：让 WebView 加载远程地址（路径必须含 /android）
+$env:APP_SERVER_URL="https://你的站点.pages.dev/android/"
 corepack pnpm cap:sync
 ```
 
-方式 B 必须是 HTTPS 地址（明文回退已主动关闭）。
+#### ⚠ 方式 B 的地址必须在 `/android/` 路径下，否则构建直接失败
+
+**安卓端不能和 PC 网页端、移动网页端共用同一份部署。** 设了不含 `/android` 的地址，
+`cap sync` 会直接抛错拒绝构建。原因是共用的后果是**静默失效**，不是报错：
+
+- Capacitor 的原生插件只注入给 App 自己的源。远程页面里
+  `window.Capacitor.isNativePlatform()` **仍返回 true**（它判断设备，不判断页面），
+  代码于是走进原生分支，而插件实际不可用 —— 下载、分享、用浏览器打开 HTML 全部失效，
+  **且不报错、无提示**。
+- 本项目的安卓修复都依赖原生侧：edge-to-edge 安全区、FileProvider 分享、存储权限、预览配色。
+- 网页版与 App 端能力集不同。`supportsDirectoryFollow()` 在 App 里主动隐藏「跟随目录」入口；
+  远程页面如果是通用那份，会把这个不可用的按钮又渲染出来。
+
+所以给安卓单独构建一份、部署到 `/android/` 路径下。地址还必须是 HTTPS
+（明文回退主动关闭）。
+
+不设 `APP_SERVER_URL` 时用内置 `dist`，这是默认也是最稳的方式。
 
 ### 打一个 APK
 
