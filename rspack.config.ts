@@ -78,16 +78,39 @@ export const createConfig = ({
     new rspack.HtmlRspackPlugin({
       template: './src/index.html',
       scriptLoading: 'defer',
-      meta: { 'application-version': version },
+      meta: {
+        'application-version': version,
+      },
     }),
-    new rspack.DefinePlugin({ __API_ORIGIN__: JSON.stringify(apiOrigin) }),
+    new rspack.DefinePlugin({
+      __API_ORIGIN__: JSON.stringify(apiOrigin),
+    }),
     new rspack.CopyRspackPlugin({
-      patterns: [{ from: path.resolve(root, 'LICENSE'), to: 'LICENSE', toType: 'file' }],
+      patterns: [
+        { from: path.resolve(root, 'LICENSE'), to: 'LICENSE', toType: 'file' },
+        /*
+         * favicon 必须落在站点根目录：index.html 引用的是 /favicon.svg，
+         * 如果走 asset module 会被改名成 /static/media/xxx.<hash>.svg，路径就对不上。
+         */
+        { from: path.resolve(root, 'src/favicon.svg'), to: 'favicon.svg', toType: 'file' },
+      ],
     }),
   ],
   performance: { hints: false },
   devServer: { port: 8090, ...devServer },
 })
+
+/*
+ * 不再有「内置 Key」这回事。
+ *
+ * 曾经有两种构建：开源版让用户自己填 Key，内部版把团队的 Key 用 DefinePlugin
+ * 编进 JS。后者在部署到公网时是致命的——浏览器能执行的代码用户都能看到，
+ * 产物里的 sk-... 在 F12 里就是明文，谁拿到网址都能抄走 Key 去花你的余额。
+ *
+ * 想真正藏住 Key 只有一条路：加服务端代理让请求从服务器发出。那需要服务器和登录，
+ * 不再是一个纯静态站点。既然选择了纯静态部署，就把这条路径整个删掉，
+ * 断掉误用的可能。
+ */
 
 // eslint-disable-next-line import/no-default-export
 export default defineConfig(createConfig())

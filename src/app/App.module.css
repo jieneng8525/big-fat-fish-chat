@@ -3,7 +3,13 @@
   inset: 0;
   display: flex;
   overflow: hidden;
-  background-color: var(--dsw-alias-bg-base);
+  /*
+   * 不铺不透明底色：底色由壁纸层兜底，否则壁纸会被这一层完全挡住。
+   * isolation 建立独立的层叠上下文，让壁纸层的 z-index:-1 落在内部最底，
+   * 而不是沉到页面背后被 body 背景盖住。
+   */
+  background-color: transparent;
+  isolation: isolate;
 }
 
 .main {
@@ -60,3 +66,25 @@
     height: var(--app-viewport-height, 100dvh);
   }
 }
+
+/*
+ * 有壁纸时的浅色主题文字加深。
+ *
+ * 壁纸上方叠着薄薄的白纱，有效背景不再是纯白；实测次要/三级文字的对比度
+ * 掉到 3.37 / 2.15（WCAG 要求 4.5 / 3.0），这就是「思考区看不清」的原因。
+ * 加深到下面这组值后回到 5.54 / 4.04。
+ *
+ * 暗壁纸不走这条规则：那套配色整段复用 theme.css 的深色变量块
+ * （body.light .onDarkWallpaper 在 theme.css 里与深色主题并列声明）。
+ */
+:global(body.light) .onWallpaper {
+  --dsw-alias-label-secondary: rgb(65, 70, 75);
+  --dsw-alias-label-tertiary: rgb(85, 90, 96);
+}
+
+/*
+ * 注意：onDarkWallpaper 的样式不在这个文件里。
+ * 它整套深色变量写在 theme.css（与 body[data-ds-dark-theme] 共用一块），
+ * 那边是普通 CSS、类名不带 hash；所以 App.tsx 里用的是字符串 'onDarkWallpaper'，
+ * 而不是 styles.onDarkWallpaper（后者会被加上 -<hash> 后缀，两边永远对不上）。
+ */

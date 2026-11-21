@@ -1,8 +1,9 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb'
+import { buildSearchEntry } from './search.js'
 import { toSessionSummary, type Session, type SessionSummary } from './types.js'
 
 /** IndexedDB 存储结构版本；新增或调整存储、索引时递增。 */
-const DB_VERSION = 11
+const DB_VERSION = 13
 
 /** 文件原件按附件的本地 id 存储，所有引用同一 id 的消息共用一份；用于缩略图、打开查看，以及没有 serverId 时补传。 */
 export type StoredFile = {
@@ -29,6 +30,23 @@ interface ChatDB extends DBSchema {
    */
   sessionsStaging: { key: string; value: Session }
   filesStaging: { key: string; value: StoredFile }
+  /** 壁纸原件，固定只存一条 id = 'current'，设置里用 id 引用 */
+  wallpaper: { key: string; value: { id: string; blob: Blob } }
+  /**
+   * 全文搜索索引：每个会话一条，存该会话所有消息的纯文本。
+   * 单独存的理由：会话详情只在打开时才加载，
+   * 有几百个会话时逐个读详情做搜索会卡；这里一次 getAll 即可在内存里过滤。
+   */
+  searchIndex: { key: string; value: StoredSearchEntry }
+}
+
+/** 一条会话的搜索文本；message 单独存放便于定位到具体哪条命中 */
+export type StoredSearchEntry = {
+  id: string
+  title: string
+  /** 每条消息的纯文本，按消息 id 索引 */
+  messages: { id: string; role: 'user' | 'assistant'; text: string }[]
+  updatedAt: number
 }
 
 let dbPromise: Promise<IDBPDatabase<ChatDB>> | null = null
@@ -57,7 +75,14 @@ const getDB = () =>
   (dbPromise ??= openDB<ChatDB>('chat-demo', DB_VERSION, {
     upgrade(db, _oldVersion, _newVersion, tx) {
       // 初始化当前格式需要的存储与索引，不迁移旧消息。
-      for (const name of ['sessions', 'files', 'sessionsStaging', 'filesStaging'] as const) {
+      for (const name of [
+        'sessions',
+        'files',
+        'sessionsStaging',
+        'filesStaging',
+        'wallpaper',
+        'searchIndex',
+      ] as const) {
         if (!db.objectStoreNames.contains(name)) {
           db.createObjectStore(name, { keyPath: 'id' })
         }
@@ -81,9 +106,60 @@ export const loadSessionSummaries = async (): Promise<SessionSummary[]> =>
 export const loadSession = async (id: string): Promise<Session | undefined> =>
   (await getDB()).get('sessions', id)
 
+/** 取出全部搜索索引，供内存里过滤。几百条记录的量级，一次读完比逐条查快。 */
+export const loadSearchEntries = async (): Promise<StoredSearchEntry[]> =>
+  (await getDB()).getAll('searchIndex')
+
+/**
+ * 为已有会话补齐搜索索引。
+ *
+ * 索引是随本次改动新增的，之前存下的会话没有对应记录，只靠 saveSession 补不上
+ * （老会话不重新保存就永远不会建索引，表现为「搜不到旧对话」）。
+ *
+ * ⚠ 不要用 getAll('sessions') 来找出缺索引的会话：
+ * 那会把几百个会话连同全部消息正文一次读进内存（几百万字），启动时直接卡住。
+ * 这里只读主键（getAllKeys 不反序列化记录）和索引主键，然后逐个补——
+ * 正常情况下索引齐全，循环一次都不进。
+ *
+ * onProgress 每补完一条回调一次，供界面显示进度；
+ * 全部完成后再回调一次 done=true。
+ */
+export const backfillSearchIndex = async (
+  onProgress?: (done: number, total: number, finished: boolean) => void
+): Promise<number> => {
+  const database = await getDB()
+  const [sessionIds, indexedIds] = await Promise.all([
+    database.getAllKeys('sessions'),
+    database.getAllKeys('searchIndex'),
+  ])
+  const indexed = new Set(indexedIds)
+  const missing = sessionIds.filter((id) => !indexed.has(id))
+  if (missing.length === 0) {
+    onProgress?.(0, 0, true)
+    return 0
+  }
+  const total = missing.length
+  // 先报一次 0/total，让界面在第一条完成前就能显示进度条
+  onProgress?.(0, total, false)
+  let done = 0
+  for (const id of missing) {
+    // 逐个读，读完即写，避免同时持有大量会话对象
+    const session = await database.get('sessions', id)
+    if (session) {
+      await database.put('searchIndex', buildSearchEntry(session))
+    }
+    done += 1
+    onProgress?.(done, total, done >= total)
+  }
+  return done
+}
+
 export const saveSession = async (session: Session, files: StoredFile[] = []): Promise<void> => {
   const summary = storedSummary(session)
-  const tx = (await getDB()).transaction(['sessions', 'sessionSummaries', 'files'], 'readwrite')
+  const tx = (await getDB()).transaction(
+    ['sessions', 'sessionSummaries', 'files', 'searchIndex'],
+    'readwrite'
+  )
   await Promise.all([
     (async () => {
       try {
@@ -92,6 +168,8 @@ export const saveSession = async (session: Session, files: StoredFile[] = []): P
         }
         await tx.objectStore('sessions').put(session)
         await tx.objectStore('sessionSummaries').put(summary)
+        // 搜索索引与会话详情在同一个事务里更新，避免出现「搜到但点不开」
+        await tx.objectStore('searchIndex').put(buildSearchEntry(session))
       } catch (error) {
         abortTransaction(tx)
         throw error
@@ -103,7 +181,10 @@ export const saveSession = async (session: Session, files: StoredFile[] = []): P
 
 /** 未打开的会话也可重命名，只读取该会话，原子更新详情和列表。 */
 export const renameSession = async (id: string, title: string): Promise<void> => {
-  const tx = (await getDB()).transaction(['sessions', 'sessionSummaries'], 'readwrite')
+  const tx = (await getDB()).transaction(
+    ['sessions', 'sessionSummaries', 'searchIndex'],
+    'readwrite'
+  )
   await Promise.all([
     (async () => {
       try {
@@ -113,6 +194,8 @@ export const renameSession = async (id: string, title: string): Promise<void> =>
           session.title = title
           await sessions.put(session)
           await tx.objectStore('sessionSummaries').put(storedSummary(session))
+          // 标题参与搜索，改名后索引必须同步
+          await tx.objectStore('searchIndex').put(buildSearchEntry(session))
         }
       } catch (error) {
         abortTransaction(tx)
@@ -125,7 +208,10 @@ export const renameSession = async (id: string, title: string): Promise<void> =>
 
 /** 删除会话，仅清理已无会话引用的本地原件；远端文件不删。 */
 export const deleteSession = async (sessionId: string): Promise<void> => {
-  const tx = (await getDB()).transaction(['sessions', 'sessionSummaries', 'files'], 'readwrite')
+  const tx = (await getDB()).transaction(
+    ['sessions', 'sessionSummaries', 'files', 'searchIndex'],
+    'readwrite'
+  )
   await Promise.all([
     (async () => {
       try {
@@ -133,6 +219,8 @@ export const deleteSession = async (sessionId: string): Promise<void> => {
         const summary = await summaries.get(sessionId)
         await tx.objectStore('sessions').delete(sessionId)
         await summaries.delete(sessionId)
+        // 索引必须一起删，否则搜索会命中已经不存在的会话
+        await tx.objectStore('searchIndex').delete(sessionId)
         for (const id of summary?.fileIds ?? []) {
           if ((await summaries.index('fileIds').count(id)) === 0) {
             await tx.objectStore('files').delete(id)
@@ -156,6 +244,20 @@ export const saveFiles = (files: StoredFile[]): Promise<void> => putFiles('files
 
 export const loadFile = async (id: string): Promise<Blob | undefined> =>
   (await (await getDB()).get('files', id))?.blob
+
+/** 壁纸是单例：固定只保留一条，切换时覆盖，清除时删除 */
+const WALLPAPER_KEY = 'current'
+
+export const saveWallpaperBlob = async (blob: Blob): Promise<void> => {
+  await (await getDB()).put('wallpaper', { id: WALLPAPER_KEY, blob })
+}
+
+export const loadWallpaperBlob = async (): Promise<Blob | undefined> =>
+  (await (await getDB()).get('wallpaper', WALLPAPER_KEY))?.blob
+
+export const clearWallpaperBlob = async (): Promise<void> => {
+  await (await getDB()).delete('wallpaper', WALLPAPER_KEY)
+}
 
 /** 清空导入暂存：开始导入前清除上次中断（如关闭页面）遗留的数据，导入失败后清除本次写入。 */
 export const clearStaging = async (): Promise<void> => {

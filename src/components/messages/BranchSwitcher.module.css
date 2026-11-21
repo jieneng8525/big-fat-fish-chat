@@ -10,10 +10,18 @@
 }
 
 .count {
-  color: var(--dsw-alias-label-tertiary);
-  font-size: 15px;
-  line-height: 18px;
-  font-weight: 500;
+  /*
+   * 原来用 label-tertiary（三级灰）配 15px，在壁纸上几乎看不见，
+   * 用户会以为「这条回答只有一版」——功能早就有，只是读不出来。
+   * 改成次级文字色 + 胶囊底色，让「2 / 3」一眼可见。
+   */
+  padding: 1px 7px;
+  border-radius: 9px;
+  color: var(--dsw-alias-label-secondary);
+  background: var(--dsw-alias-interactive-bg-hover);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   user-select: none;

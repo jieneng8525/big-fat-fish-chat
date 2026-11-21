@@ -7,6 +7,7 @@ import { cancelUpload, describeUploadError, uploadAttachment, useUploads } from 
 import { useSettings } from '../settings.js'
 import { appendBranch, getVisibleMessages, normalizeSession, selectVersion } from './branches.js'
 import * as db from './db.js'
+import { useIndexProgress } from './indexProgress.js'
 import {
   clearAllDrafts,
   clearDraft,
@@ -36,6 +37,30 @@ import {
 const MODEL: ChatModel = 'deepseek-flash'
 /** 所有生成请求统一携带的助手身份说明 */
 const SYSTEM_PROMPT = '该助手为DeepSeek，由深度求索公司创造。'
+
+/**
+ * 界面深浅色提示，追加在 system 之后（默认不追加）。
+ *
+ * 为什么默认关：
+ * - 模型未必照做，没有任何机制强制它写 prefers-color-scheme，收益不确定；
+ * - system 每轮都要重发，多一行就多一份持续 token 开销；
+ * - 还可能改变对话风格（模型以为你要深色主题的助手，主动谈配色）。
+ * 打开方式：设置里开启「告知模型界面配色」后再生成新回答才生效。
+ */
+const colorSchemeHint = (): string => {
+  const { tellModelColorScheme, themePreference } = useSettings.getState()
+  if (!tellModelColorScheme) {
+    return ''
+  }
+  const dark =
+    themePreference === 'dark' ||
+    (themePreference === 'system' &&
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-color-scheme: dark)').matches)
+  return dark
+    ? '当前用户界面为深色模式。生成 HTML 时请加入 prefers-color-scheme 适配，避免纯白背景。'
+    : '当前用户界面为浅色模式。'
+}
 /** 保留最近打开的详情；当前会话、生成中及尚未成功保存的会话不淘汰。 */
 const SESSION_CACHE_LIMIT = 5
 /** 安全审核固定开启，所有请求都走扩展模式 */
@@ -303,6 +328,21 @@ export const initChat = (): Promise<void> => {
       if (epoch === historyEpoch) {
         set({ ready: true, sessions: sortSessions(summaries) })
       }
+      /*
+       * 为老会话补建搜索索引。索引是后加的存储，之前保存过的会话没有对应记录，
+       * 而 saveSession 只会在会话再次保存时才写索引——不主动补，老对话永远搜不到。
+       * 放到 ready 之后异步做，不阻塞首屏；失败也不影响已有索引，只是搜不全。
+       * 补建期间搜索结果是残缺的，进度推到 indexProgress 让界面显示进度条。
+       */
+      void db
+        .backfillSearchIndex((done, total, finished) => {
+          useIndexProgress.getState().update(done, total, finished)
+        })
+        .catch((error: unknown) => {
+          db.reportStorageError('backfill search index')(error)
+          // 失败也要结束进度状态，否则进度条会一直停在那里
+          useIndexProgress.getState().update(0, 0, true)
+        })
     } catch (error) {
       if (epoch === historyEpoch) {
         set({ initError: true })
@@ -1000,7 +1040,7 @@ const streamReply = async (sessionId: string, initial: AssistantMessage, request
           useSettings.getState().apiKey ?? '',
           {
             model: initial.model ?? MODEL,
-            system: SYSTEM_PROMPT,
+            system: `${SYSTEM_PROMPT}${colorSchemeHint()}`,
             messages,
             thinking: { type: initial.thinking ? 'enabled' : 'disabled' },
             safety_check: SAFETY_CHECK,

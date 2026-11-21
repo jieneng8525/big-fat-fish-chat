@@ -523,3 +523,31 @@ export const IconToastError16 = () => (
     />
   </svg>
 )
+
+/**
+ * 应用 Logo：品牌蓝圆角方块 + 白色对话气泡 + 蓝色声波。
+ *
+ * 为什么是填充色而不是线条：favicon 只有 16px，线条图形在那个体积下会糊成一团；
+ * 实心块加高对比度的白色负形，缩到 16px 仍然认得出（实测过 16/24/32 三档）。
+ *
+ * 尺寸由 size 控制，viewBox 固定 32。用于侧边栏标题和 favicon。
+ */
+export const AppLogo = ({ size = 28 }: { size?: number }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 32 32"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+  >
+    <rect width="32" height="32" rx="9" fill="var(--dsw-alias-brand-primary)" />
+    <path
+      d="M10 8h12a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-6.5l-4.6 3.4A.8.8 0 0 1 9.6 22.7V22a3 3 0 0 1-2.6-3V11a3 3 0 0 1 3-3z"
+      fill="#fff"
+    />
+    <rect x="12.2" y="13" width="2" height="4.4" rx="1" fill="var(--dsw-alias-brand-primary)" />
+    <rect x="16" y="11.2" width="2" height="8" rx="1" fill="var(--dsw-alias-brand-primary)" />
+    <rect x="19.8" y="13.4" width="2" height="3.6" rx="1" fill="var(--dsw-alias-brand-primary)" />
+  </svg>
+)

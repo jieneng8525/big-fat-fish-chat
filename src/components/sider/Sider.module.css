@@ -23,15 +23,27 @@
 }
 
 .appName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
   padding-left: 4px;
+  color: var(--dsw-alias-brand-primary);
+}
+
+/* Logo 不参与压缩，否则窄侧边栏里会被压扁 */
+.appName > svg {
+  flex-shrink: 0;
+}
+
+.appNameText {
+  min-width: 0;
   overflow: hidden;
   font-size: 20px;
   line-height: 22px;
   font-weight: 600;
   white-space: nowrap;
   text-overflow: ellipsis;
-  color: var(--dsw-alias-brand-primary);
 }
 
 .newChat {
@@ -244,4 +256,15 @@
     font-size: 16px;
     line-height: 22px;
   }
+}
+
+/* AI 内容提示：列表下方的固定小字，属于侧边栏的稳定区域 */
+.caveat {
+  flex-shrink: 0;
+  padding: 8px 6px 4px;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--dsw-alias-label-tertiary);
+  text-align: center;
+  user-select: none;
 }

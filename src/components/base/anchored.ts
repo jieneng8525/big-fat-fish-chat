@@ -129,6 +129,20 @@ export const useAnchoredPosition = <T extends HTMLElement, F extends HTMLElement
       return
     }
     const rect = anchor.getBoundingClientRect()
+    /*
+     * 锚点不可见时（display: none）它仍在 DOM 里，但 getBoundingClientRect
+     * 返回全零矩形，算出来 left=0、top=4，浮层会被钉到视口左上角。
+     *
+     * 实际触发场景：会话项只有 hover 时才显示「⋯」按钮，菜单打开后鼠标一移开
+     * 按钮就 display:none，ResizeObserver 立刻回调 update()，菜单当场跳到左上角
+     * ——用户看到的就是「光标移上去鬼跳」。
+     *
+     * 这里直接跳过测量，保持上一次的位置：锚点都看不见了，
+     * 让它停着远比甩到角落好（菜单通常会紧接着被关闭）。
+     */
+    if (rect.width === 0 && rect.height === 0) {
+      return
+    }
     const spaceAbove = rect.top - offset - VIEWPORT_PADDING
     const spaceBelow = window.innerHeight - rect.bottom - offset - VIEWPORT_PADDING
 

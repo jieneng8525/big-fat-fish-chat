@@ -166,7 +166,23 @@ body {
   --dsw-specific-sidebar-nav-item-hover: var(--dsw-static-neutral-bluish-75);
 }
 
-body[data-ds-dark-theme] {
+/*
+ * 深色变量块被两处共用：
+ *   1. body[data-ds-dark-theme]        —— 深色主题
+ *   2. body.light .onDarkWallpaper     —— 浅色主题下遇到暗壁纸
+ *
+ * 之所以要共用整块：只覆盖文字颜色不够。暗壁纸时如果把文字反成浅色，
+ * 但侧边栏、输入框、气泡、代码块仍是浅色底，就会出现白字压白底（实测侧边栏完全看不见）。
+ * 手工挑几个变量抄一份也会漏——深色主题共 48 个变量，漏一个就是一处不可见。
+ *
+ * ⚠ onDarkWallpaper 的名字问题（实测踩过）：
+ * App.tsx 通过 CSS Module 的 styles.onDarkWallpaper 引用它，那边会编译成
+ * `onDarkWallpaper-<hash>`；而这里 theme.css 是普通 CSS，不会加 hash。
+ * 两边对不上时样式永远匹配不到——症状就是「darkWallpaper 判定为 true 但界面毫无变化」。
+ * 对策：在 App.module.css 里用 :global() 把类名钉成不带 hash 的原文。
+ */
+body[data-ds-dark-theme],
+body.light .onDarkWallpaper {
   --dsw-alias-bg-base: var(--dsw-static-neutral-bluish-950);
   --dsw-alias-bg-layer-2: var(--dsw-static-neutral-bluish-850);
   --dsw-alias-bg-layer-3: var(--dsw-static-neutral-bluish-800);

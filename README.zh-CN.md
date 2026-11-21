@@ -1,75 +1,122 @@
-# chat-demo
+# 大肥鱼Chat
 
 [English](README.md) | 简体中文
 
-基于 DeepSeek API 的静态聊天示例。无需应用后端，浏览器直接请求配置的 API 服务。
+基于 [DeepSeek](https://www.deepseek.com) 官方 API 的**纯静态**聊天客户端。
 
-点击 [在线体验](https://deepseek-ai.github.io/chat-demo/) 即可使用，也可以前往 [Releases](https://github.com/deepseek-ai/deepseek-chat-demo/releases) 下载压缩包，解压后双击 `index.html` 在本地使用，无需安装或构建。首次使用时，请在设置中填写 API Key。
-
-## 运行
-
-准备 Node.js 22.12+ 和 pnpm：
-
-```sh
-git clone https://github.com/deepseek-ai/chat-demo.git
-cd chat-demo
-pnpm install
-pnpm dev
-```
-
-打开 http://localhost:8090 。
-
-生成静态产物：
-
-```sh
-pnpm build
-```
-
-产物位于 `dist/`，可部署到静态服务器，也可直接打开 `dist/index.html`。直接打开时，浏览器和 API 服务需允许 `file://` 页面的存储与跨域请求。
+**没有后端**——浏览器直接连 `api.deepseek.com`，你的 Key 只存在自己浏览器的 localStorage 里，不经过任何第三方服务器。整个站点就是几个静态文件，扔到任何静态托管上就能用。
 
 ## 功能
 
-- 多会话、自动标题、重命名与删除；编辑提问、重新生成和切换消息分支。
-- 流式回答、深度思考、智能搜索、链接阅读与来源引用；支持停止和符合条件的继续生成。
-- 附件上传、粘贴与拖拽，语音输入和回复朗读；移动端录音时输入框首行显示实时频谱。
-- Markdown、代码高亮、KaTeX 公式和 Mermaid 图表。
-- 简体中文与英文、浅色与深色主题、移动端布局、位置设置、历史导入导出。
+**对话**
+- 流式输出、深度思考（thinking 块可折叠）、智能搜索（联网检索并给出引用来源）
+- 多版本回答：重新生成后可在 `1/3`、`2/3` 之间切换对比
+- 编辑提问、分支切换、从任意节点续写
+- 附件上传（图片、PDF、Office 文档）
+- Markdown 渲染：代码高亮、表格、KaTeX 公式、Mermaid 图
 
-## 数据
+**数据**
+- 会话与附件存在浏览器 IndexedDB，关掉网页不会丢
+- 导入 / 导出历史（兼容 DeepSeek 官方导出的 ZIP）
+- **全文搜索**：跨所有会话搜标题和正文，关键词高亮
 
-API Key 和设置保存在浏览器 localStorage，会话及附件原件保存在 IndexedDB，本地数据按浏览器用户配置和站点源（origin）隔离。发送对话、上传附件和使用语音功能时，相应内容会提交给配置的 API 服务。
+**界面**
+- 深浅主题切换
+- **壁纸**：从本地目录选图片或视频当背景（仅 Chromium 系浏览器）
+- 根据壁纸明暗自动调整文字配色，保证可读性
+- 导出对话为 TXT / Markdown / HTML / Word / Excel / PPT
+- 快捷键：`Ctrl+K` 新建对话、`Ctrl+F` 搜索、`Esc` 后按 `F2` 停止生成
 
-设置中的历史导入导出使用 ZIP 格式。导入会在确认并校验成功后替换全部本地会话和附件；导出包含会话与本地可用的图片原件，不包含 API Key、设置或非图片附件原件。格式与保留范围见[历史导入导出](src/services/chat/history/README.md)。
+**其他**
+- 用量统计：本地累计 token 并按价目估算费用
+- 账号余额：直连官方 `/user/balance` 查真实余额
 
-设置 → 数据管理 → 删除所有对话，会在确认后清空全部本地会话、附件原件和未发送的草稿，停止正在生成的回复并回到新对话。API Key 和其他设置保留，已上传到 API 服务的文件不受影响。
+## 使用
+
+### 方式一：直接在线用
+
+打开部署好的网址，首次使用时在设置里填自己的 [DeepSeek API Key](https://platform.deepseek.com/api_keys) 即可。
+
+### 方式二：下载即用，不装任何东西
+
+从 [Releases](../../releases) 下载压缩包，解压后**双击 `index.html`** 就能在本地使用，无需安装 Node.js，无需构建。
+
+### 方式三：自己构建
+
+需要 Node.js 20 或以上：
+
+```sh
+git clone <仓库地址>
+cd <项目目录>
+corepack pnpm install
+corepack pnpm dev     # 开发服务器：http://localhost:8090
+```
+
+生产构建：
+
+```sh
+corepack pnpm build   # 产物在 dist/
+```
+
+`dist/` 是一堆纯静态文件，直接上传到任意静态托管（Cloudflare Pages / Vercel / GitHub Pages / Nginx）即可。
+
+**Cloudflare Pages 配置**：
+
+| 配置项 | 值 |
+|---|---|
+| Build command | `corepack pnpm install && corepack pnpm build` |
+| Build output directory | `dist` |
+
+详细步骤和安全自查见 [`docs/deploy-cloudflare-pages.md`](docs/deploy-cloudflare-pages.md)。
+
+## 关于 API Key 的安全性
+
+**Key 只存在你自己浏览器的 localStorage 里**，因为这个项目根本没有服务器可以上传它。
+
+由此带来的后果，需要你知道：
+
+- 换浏览器、换电脑、清站点数据后**要重新填**
+- **不要在公共电脑上填自己的 Key**
+- 别人打开你部署的网站，看到的是空的输入框，**拿不到你的 Key**
+
+**这个项目永远不会内置 Key。** 如果你 fork 后想给团队做开箱即用的版本，请注意：任何编进前端代码的 Key，用户在 F12 里都能看到明文，等于公开。想真正藏住 Key，只有加服务端代理一条路，那样就不再是纯静态站点了。
+
+## 数据存在哪
+
+全部在本机，不上传任何地方：
+
+| 数据 | 位置 |
+|---|---|
+| 会话、附件、搜索索引 | IndexedDB 数据库 `chat-demo` |
+| API Key、主题、语言等设置 | localStorage `chat-demo:*` |
+| 壁纸目录授权 | IndexedDB `chat-demo-wallpaper-handles` |
+
+清除浏览器站点数据会**全部清空**。重要对话请先用「导出所有历史对话」备份。
 
 ## 开发
 
-| 命令          | 用途                |
-| ------------- | ------------------- |
-| `pnpm dev`    | 启动开发服务器      |
-| `pnpm build`  | 构建到 `dist/`      |
-| `pnpm type`   | TypeScript 类型检查 |
-| `pnpm lint`   | oxlint 检查         |
-| `pnpm format` | oxfmt 格式化        |
-
-[rspack.config.ts](rspack.config.ts) 默认连接 `https://api.deepseek.com`。`createConfig({ apiOrigin, devServer })` 支持自定义 API 地址和开发服务器代理。
-
-聊天默认使用 `deepseek-flash`，通过 Anthropic 兼容的 Messages / Files API 通信；语音使用 ASR / TTS 接口。请求使用搜索、链接阅读、标题和 `latest_reminder` 等扩展，接入服务需支持相应能力。附件实际支持的格式以服务端校验为准。
-
-```text
-src/
-  app/                 应用布局、主题与全局样式
-  components/          聊天、设置、Markdown 等界面组件
-  i18n/                中英文文案
-  services/
-    api/               API 请求、SSE 与协议类型
-    chat/              会话、消息分支、本地存储与历史导入导出
-    markdown/          Markdown 解析、代码高亮与图表
-    speech/            录音与朗读
-  utils/               通用工具
+```sh
+corepack pnpm dev     # 开发服务器（热更新）
+corepack pnpm type    # 类型检查
+corepack pnpm lint    # 代码检查
+corepack pnpm build   # 生产构建
 ```
 
-## 许可证
+技术栈：React 18 + TypeScript + Zustand + Rspack（SWC）。
 
-[MIT](LICENSE)。构建会将许可证复制到 `dist/LICENSE`，分发时请一并保留；第三方依赖遵循各自的许可证。
+**注意**：跑过 `pnpm build` 之后 `dist/` 会留着旧产物。下次启动 dev 前先删掉它，否则 dev server 会把 `dist` 里的旧文件也当静态资源返回，表现为热更新报 404、CSS 被当成 `text/html`。
+
+## 已知限制
+
+- **壁纸目录选择**只支持 Chromium 系浏览器（Chrome / Edge）。Firefox、Safari 没有 File System Access API。
+- **壁纸自动跟随桌面壁纸做不到**：浏览器读不到 Wallpaper Engine 等软件当前显示的是哪张图，只能手动在目录里选一个文件。原因详见 [`docs/desktop-wallpaper-note.md`](docs/desktop-wallpaper-note.md)。
+- **提示词在前端**：用户改一下代码就能改，不能当作安全边界。
+- **没有多端同步**：数据在本机，换设备就是空的，除非手动导出导入。
+
+## 致谢
+
+基于 [DeepSeek 官方 chat-demo](https://github.com/deepseek-ai/chat-demo) 修改。
+
+## License
+
+MIT，详见 [LICENSE](LICENSE)。

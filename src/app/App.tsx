@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import clsx from 'clsx'
 import { useTranslate } from '../i18n/index.js'
 import { useSettings } from '../services/settings.js'
 import { useIsMobile, useMobileViewport, usePreventPageScroll } from './viewport.js'
@@ -11,6 +12,7 @@ import {
 } from '../services/chat/store.js'
 import { SearchPanel } from '../components/search/SearchPanel.js'
 import { closeSearchPanel } from '../components/search/searchPanelState.js'
+import { useGlobalShortcuts } from './shortcuts.js'
 import { SessionView } from '../components/session/SessionView.js'
 import { MobileHeader } from '../components/session/MobileHeader.js'
 import { Welcome } from '../components/session/Welcome.js'
@@ -24,12 +26,20 @@ import { stopReadAloud } from '../services/speech/readAloud.js'
 import { CollapsedSider } from '../components/sider/CollapsedSider.js'
 import { closeMobileSider } from '../components/sider/mobileSiderState.js'
 import { MobileSider, Sider } from '../components/sider/Sider.js'
+import { WallpaperLayer } from '../components/session/WallpaperLayer.js'
+import { isDarkWallpaper } from '../components/session/WallpaperLayer.js'
 import styles from './App.module.css'
 
 export const App = () => {
   const t = useTranslate()
   const isMobile = useIsMobile()
   const locale = useSettings((state) => state.locale)
+  // 有壁纸（手动导入或目录选择）时，浅色主题需要调整文字保证对比度
+  const hasManualWallpaper = useSettings((state) => state.wallpaper !== null)
+  const followingWallpaper = useSettings((state) => state.wallpaperFollow)
+  const hasWallpaper = hasManualWallpaper || followingWallpaper
+  // 暗壁纸要换成浅色文字（与 WallpaperLayer 用同一个判定函数，两处必须一致）
+  const darkWallpaper = useSettings((state) => isDarkWallpaper(state.wallpaperBrightness))
   // 移动端侧边栏以独立抽屉管理开合状态
   const siderCollapsed = useSettings((state) => state.siderCollapsed) && !isMobile
   const ready = useChatStore((state) => state.ready)
@@ -60,6 +70,9 @@ export const App = () => {
   useEffect(() => onUploadNotice(showToast), [])
   useEffect(bindChatPersistence, [])
 
+  // 全局快捷键：Ctrl+K 新对话、Ctrl+F 搜索、Esc 停止生成
+  useGlobalShortcuts()
+
   // 搜索结果面板只属于当前会话
   useEffect(closeSearchPanel, [activeId])
   // 切换会话时停止朗读
@@ -75,7 +88,36 @@ export const App = () => {
 
   return (
     <>
-      <div ref={frameRef} className={styles.frame}>
+      {/*
+        onWallpaper：有壁纸时给 frame 加标记。
+        浅色主题下壁纸上方叠了半透明白纱，正文对比度会掉到 3.4/2.2（低于 WCAG 4.5/3.0），
+        需要在这一层加深文字；深色主题与无壁纸时不受影响。
+      */}
+      <div
+        ref={frameRef}
+        className={clsx(
+          styles.frame,
+          /*
+           * onWallpaper 与 onDarkWallpaper 必须互斥。
+           * 两者都定义 --dsw-alias-label-secondary / -tertiary：
+           * onWallpaper 是「亮壁纸 + 深字」，onDarkWallpaper 是「暗壁纸 + 浅字」，
+           * 同时挂上时谁后加载谁生效，结果不可预测——实测就是正文被 onWallpaper
+           * 的深色值盖住，暗壁纸上一片深色字。
+           */
+          hasWallpaper && !darkWallpaper && styles.onWallpaper,
+          /*
+           * 这里刻意用字符串而不是 styles.onDarkWallpaper。
+           *
+           * 那个类名的样式定义在 theme.css（普通 CSS，不加 hash），而 CSS Module
+           * 会给 styles 里的每个键加上 `-<hash>` 后缀，两边永远对不上。
+           * 用 :global(.onDarkWallpaper) 让它参与导出也试过：rspack 不导出 global 规则，
+           * styles.onDarkWallpaper 会是 undefined，clsx 直接跳过，类名同样挂不上。
+           * 直接写死字符串是最稳的做法，theme.css 里的选择器与之一一对应。
+           */
+          hasWallpaper && darkWallpaper && 'onDarkWallpaper'
+        )}
+      >
+        <WallpaperLayer />
         {isMobile ? <MobileSider /> : siderCollapsed ? null : <Sider />}
         <main className={styles.main}>
           {saveError ? (

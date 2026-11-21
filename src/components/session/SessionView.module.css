@@ -15,6 +15,21 @@
   background: var(--dsw-alias-bg-base);
 }
 
+/*
+ * 有壁纸时顶栏改为透明，让壁纸透出来（侧边栏仍不透明，形成层次）。
+ * 没壁纸时不加这个类，保持原来的不透明底色。
+ */
+.headerTransparent {
+  background: transparent;
+}
+
+/* 透明顶栏下，标题直接压在壁纸上可能看不清，给标题自己加一层薄雾 */
+.headerTransparent .title {
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dsw-alias-bg-base) 70%, transparent);
+  backdrop-filter: blur(8px);
+}
+
 .title {
   max-width: 480px;
   padding: 8px 12px;
@@ -23,6 +38,15 @@
   text-overflow: ellipsis;
   font: var(--dsw-font-s-strong-14);
   color: var(--dsw-alias-label-primary);
+}
+
+/*
+ * 搜索按钮靠右：标题占满剩余宽度，这个槽位只包住图标。
+ * 有壁纸时顶栏透明，搜索面板自带不透明底色（见 SessionSearch.module.css）。
+ */
+.searchSlot {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .withCollapsedSider {
@@ -40,13 +64,24 @@
   width: calc(var(--message-list-max-width) - 64px);
   max-width: calc(100% - 32px);
   margin: auto auto 0;
+  /*
+   * 渐隐放在容器自身，不用伪元素。
+   *
+   * 之前把渐隐做成 ::before 是多余的：容器本来就靠渐变遮住滚动的消息，
+   * 拆出去反而在输入框和渐隐之间造出缝隙与额外的层级问题。
+   *
+   * 原版的问题只有一处：30% 处硬切到 bg-base（方角、且与输入框背景不同色）。
+   * 这里改成：
+   * - 从顶部平滑过渡到 --dsw-specific-input-major（输入框自己的底色），消除色差硬边
+   * - 容器上方两个角给 24px 圆角并与输入框对齐，圆角外侧不再露出方角
+   */
   background: linear-gradient(
     to bottom,
     transparent 0%,
-    transparent 30%,
-    var(--dsw-alias-bg-base) 30%,
-    var(--dsw-alias-bg-base) 100%
+    color-mix(in srgb, var(--dsw-specific-input-major) 55%, transparent) 45%,
+    var(--dsw-specific-input-major) 100%
   );
+  border-radius: 24px 24px 0 0;
 }
 
 .caveat {

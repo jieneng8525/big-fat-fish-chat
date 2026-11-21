@@ -33,6 +33,8 @@ declare const styles: {
   readonly "importConfirmText": string;
   readonly "deleteConfirm": string;
   readonly "deleteActions": string;
+  readonly "wallpaperActions": string;
+  readonly "wallpaperSelect": string;
 };
 export = styles;
 

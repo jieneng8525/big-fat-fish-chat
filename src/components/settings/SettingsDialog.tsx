@@ -22,6 +22,7 @@ import {
   isChineseBrowser,
   setLocale,
   setLocation,
+  setTellModelColorScheme,
   setThemePreference,
   setTtsVoice,
   useSettings,
@@ -33,6 +34,8 @@ import { Modal } from '../base/Modal.js'
 import { Select } from '../base/Select.js'
 import { showToast } from '../base/toastState.js'
 import { ApiKeyConfirm, ApiKeyField, useApiKeyEditor } from './ApiKeyField.js'
+import { WallpaperSetting } from './WallpaperSetting.js'
+import { UsageSetting } from './UsageSetting.js'
 import { closeSettings, useSettingsDialog, type SettingsSection } from './settingsDialogState.js'
 import styles from './Settings.module.css'
 
@@ -98,12 +101,15 @@ const SettingsContent = () => {
             <>
               <ThemeSetting />
               <LocaleSetting />
+              <ColorSchemeHintSetting />
+              <WallpaperSetting />
               <TtsVoiceSetting />
               <LocationSetting />
             </>
           ) : (
             <>
               <ApiKeyField editor={apiKeyEditor} />
+              <UsageSetting />
               <ImportHistory historyImport={historyImport} disabled={historyBusy} />
               <ExportHistory disabled={historyBusy} />
               <SettingCell
@@ -286,6 +292,33 @@ const LocaleSetting = () => {
           ]}
           onChange={setLocale}
         />
+      }
+    />
+  )
+}
+
+/**
+ * 是否把界面深浅色告诉模型（默认关）。
+ * 开启后在 system 提示里附一句当前配色；模型未必照做，且每轮会多带 token，
+ * 详见 docs/html-open-note.md。
+ */
+const ColorSchemeHintSetting = () => {
+  const t = useTranslate()
+  const enabled = useSettings((state) => state.tellModelColorScheme)
+  return (
+    <SettingCell
+      label={t('settingsColorSchemeHint')}
+      description={t('settingsColorSchemeHintDescription')}
+      status={null}
+      action={
+        <Button
+          variant="outlined"
+          size="m"
+          className={styles.cellButton}
+          onClick={() => setTellModelColorScheme(!enabled)}
+        >
+          {t(enabled ? 'enabled' : 'disabled')}
+        </Button>
       }
     />
   )
