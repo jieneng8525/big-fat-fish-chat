@@ -15,16 +15,30 @@
  * 所以这里只做最小的字符串处理。
  */
 
-/** 注入的样式。用 !important 只在 :root 上兜底底色，不改具体元素的样式 */
+/**
+ * 注入的样式。
+ *
+ * ⚠ 两个坑都踩过了，这里是最后的做法：
+ *
+ * 坑 1：没有 !important，且注入位置在模型样式之前 —— 模型几乎必写的
+ *      `body { background: #fff }` 把深色规则全盖掉，媒体查询匹配了也不生效。
+ * 坑 2：连 `color` 一起用 !important 覆盖 —— 文字变浅了，但模型自己写死的
+ *      浅色容器（如 `.card { background: #f5f5f5 }`）没有跟着变，
+ *      于是白卡片上漂着白字，什么都看不见，比原样更难读。
+ *
+ * 最终只改**画布和 body 的底色**，不碰 color：
+ * - `:root { color-scheme }` 会让浏览器自己给未声明颜色的文字用合适的前景色
+ * - 模型显式写了 color 的，保留它的选择（那是它设计的对比度）
+ * 这样深色下背景变深、默认文字自动变浅，模型自有配色的组件维持原样。
+ */
 const THEME_STYLE = `<style id="dsh-preview-theme">
-  /* 让原生控件（滚动条、输入框）跟随配色 */
+  /* 让原生控件（滚动条、输入框）与默认文字色跟随配色 */
   :root { color-scheme: light dark; }
-  /* 只兜底画布底色，模型自己声明了就用它的 */
-  html { background: #ffffff; }
-  body { background: #ffffff; color: #1f2328; }
+  html { background: #ffffff !important; }
+  body { background: #ffffff !important; }
   @media (prefers-color-scheme: dark) {
-    html { background: #0d1117; }
-    body { background: #0d1117; color: #e6edf3; }
+    html { background: #0d1117 !important; }
+    body { background: #0d1117 !important; }
   }
 </style>`
 
