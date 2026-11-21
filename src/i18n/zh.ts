@@ -182,7 +182,7 @@ export const zh = {
   wallpaperErrorRead: '壁纸读取失败，请重试',
   wallpaperErrorTooLarge: '文件过大，请换小一点的',
   wallpaperFollowLabel: '从壁纸目录选择',
-  downloadSaved: '已保存到「文档/大肥鱼Chat」：{name}',
+  downloadSaved: '已保存：{name}（在 Android/data/chat.bigfatfish.app/files/大肥鱼Chat 下）',
   downloadSavedShared: '已保存：{name}',
   downloadFailed: '保存失败：{message}',
   htmlOpenedInBrowser: '已交给系统打开。在浏览器里按返回即可回到应用。',

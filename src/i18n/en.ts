@@ -193,7 +193,7 @@ export const en = {
   wallpaperErrorRead: 'Failed to load wallpaper. Please try again.',
   wallpaperErrorTooLarge: 'File is too large. Please pick a smaller one.',
   wallpaperFollowLabel: 'Pick from wallpaper folder',
-  downloadSaved: 'Saved to Documents/大肥鱼Chat: {name}',
+  downloadSaved: 'Saved: {name} (under Android/data/chat.bigfatfish.app/files/大肥鱼Chat)',
   downloadSavedShared: 'Saved: {name}',
   downloadFailed: 'Save failed: {message}',
   htmlOpenedInBrowser: 'Opened in your browser. Press Back there to return to the app.',

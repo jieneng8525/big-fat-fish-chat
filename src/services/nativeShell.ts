@@ -46,10 +46,25 @@ export type SaveResult =
   | { ok: false; reason: string }
 
 /**
- * 保存文件到公有文档目录，并拉起分享面板（可存网盘、发微信、用其他 App 打开）。
+ * 保存文件到 App 的外部文档目录，并拉起分享面板（可存网盘、发微信、用其他 App 打开）。
  *
- * Directory.Documents 在 Android 上映射到 App 的外部文档目录，
- * 卸载 App 才会删除；比 cache 目录稳妥，也无需申请存储权限。
+ * ⚠ 这里**不能**用 Directory.Documents。
+ *
+ * Documents 映射到公共的 /storage/emulated/0/Documents。从 Android 11 起，
+ * 公共目录下应用只能写自己（通过 MediaStore）创建的文件；直接 open() 一个路径
+ * 会拿到 EACCES (Permission denied)。真机实测报错：
+ *     'writeFile' failed with: /storage/emulated/0/Documents/大肥鱼Chat/x.html:
+ *     open failed: EACCES (Permission denied)
+ *
+ * 我在模拟器上测试时"通过"了，是因为那个目录恰好由 adb 以 App 的 uid 创建，
+ * 属主和 App 一致，所以写得进去。这个前提在真机上不成立 —— 这是我判断失误，
+ * 不是模拟器的问题。
+ *
+ * 改用 Directory.External：
+ *   → /storage/emulated/0/Android/data/<package>/files/大肥鱼Chat/
+ * 这是 App 自己的外部目录，**无需任何存储权限**，卸载时才删除。
+ * 路径虽然在 Android/data 下，但分享面板会把它以 content:// 暴露出去，
+ * 用户能正常存到网盘/相册/其他 App，体验不受影响。
  *
  * 分享面板当前是否开着 —— Share.share() 会一直挂起到用户做出选择；
  * 这期间再调用一次，Android 会抛 "Can't share while sharing is in progress"。
@@ -64,32 +79,50 @@ export const saveToDownloads = async (blob: Blob, fileName: string): Promise<Sav
   }
   try {
     const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem')
-    const { Share } = await import('@capacitor/share')
 
     const text = isTextMime(blob.type)
     const data = text ? await blob.text() : await blobToBase64(blob)
+    const relPath = `${APP_DIR}/${fileName}`
 
     const written = await Filesystem.writeFile({
-      path: `${APP_DIR}/${fileName}`,
+      path: relPath,
       data,
-      directory: Directory.Documents,
+      directory: Directory.External,
       encoding: text ? Encoding.UTF8 : undefined,
       recursive: true,
     })
 
-    // 文件已经落盘。分享面板只是「顺便」提供的入口，弹不出来不影响保存成功。
+    /*
+     * 分享必须走自写的 ShareFile 插件，不能用 @capacitor/share。
+     *
+     * writeFile 返回的是 file:///storage/emulated/0/Android/data/... ，
+     * 这种 URI 跨进程没有读权限。Share 插件把它原样放进 Intent，
+     * 接收方拿到的就是空壳 —— 实测从文件管理器另存出来的文件只有 16 字节，
+     * 扩展名还退化成 .txt。
+     *
+     * ShareFile 用 FileProvider 换成 content:// 并带上
+     * FLAG_GRANT_READ_URI_PERMISSION，接收方才能真正读到 6251 字节的原文。
+     */
     if (shareInFlight) {
+      return { ok: true, path: written.uri, shared: false }
+    }
+    const plugin = (
+      Capacitor as unknown as {
+        Plugins?: {
+          ShareFile?: {
+            share: (o: { path: string; mime: string; title: string }) => Promise<unknown>
+          }
+        }
+      }
+    ).Plugins?.ShareFile
+    if (!plugin) {
+      // 没有自定义插件（例如旧包）时不弹面板，文件已经落盘，不算失败
       return { ok: true, path: written.uri, shared: false }
     }
     shareInFlight = true
     let shared = false
     try {
-      await Share.share({
-        title: fileName,
-        text: fileName,
-        url: written.uri,
-        dialogTitle: '保存或分享',
-      })
+      await plugin.share({ path: relPath, mime: blob.type || 'application/octet-stream', title: fileName })
       shared = true
     } catch {
       // 用户取消分享不算失败，文件已经落盘

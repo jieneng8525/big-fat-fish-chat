@@ -45,6 +45,7 @@ public class MainActivity extends BridgeActivity {
          * window.Capacitor.Plugins.OpenInBrowser 是 undefined。
          */
         registerPlugin(OpenInBrowserPlugin.class);
+        registerPlugin(ShareFilePlugin.class);
 
         super.onCreate(savedInstanceState);
 
