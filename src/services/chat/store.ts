@@ -518,6 +518,36 @@ export const renameSession = (id: string, title: string) => {
 }
 
 /**
+ * 收藏 / 取消收藏会话。
+ *
+ * 要同时改两处：侧边栏读的是 sessions 列表，详情页读的是 sessionCache。
+ * 只改一处会出现「侧边栏变了但会话里还是旧状态」。
+ */
+export const toggleSessionStar = (id: string) => {
+  if (get().importingHistory || deletingSessions.has(id)) {
+    return
+  }
+  const current = get().sessions.find((session) => session.id === id)
+  if (!current) {
+    return
+  }
+  const starred = current.starred ? undefined : true
+  set((state) => ({
+    sessions: state.sessions.map((session) =>
+      session.id === id ? { ...session, starred } : session
+    ),
+  }))
+  const cached = getSession(id)
+  if (cached) {
+    updateSession(id, (session) => ({ ...session, starred }))
+    persist(id)
+    return
+  }
+  // 详情没加载时只改汇总记录；打开会话时会从详情里覆盖回来
+  void db.setSessionStar(id, starred).catch(db.reportStorageError('star session'))
+}
+
+/**
  * 删除会话；本地原件仅在没有其他会话引用时清理。远端文件不删：导入、编辑、重新生成都会复用同一个附件，
  * 同一服务端文件可能被多个会话引用，不维护引用计数。
  */

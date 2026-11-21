@@ -13,6 +13,7 @@ import { showToast } from '../base/toastState.js'
 import { openSettings } from '../settings/settingsDialogState.js'
 import { closeMobileSider, useMobileSider } from './mobileSiderState.js'
 import { SessionSearch } from '../session/SessionSearch.js'
+import { FavoriteEntry } from './FavoriteEntry.js'
 import { SessionItem } from './SessionItem.js'
 import styles from './Sider.module.css'
 
@@ -99,6 +100,8 @@ export const Sider = ({ mobile = false }: { mobile?: boolean }) => {
       </div>
       {/* AI 内容提示：放在会话列表之外的底部空白区，不挡输入框，也不与壁纸打架 */}
       <div className={styles.caveat}>{t('contentCaveat')}</div>
+      {/* 收藏入口：平时只露一颗黄色星星，悬停才展开文字 */}
+      <FavoriteEntry />
       <div className={styles.bottom}>
         <button type="button" className={styles.settings} onClick={() => openSettings('general')}>
           <span className={styles.settingsIcon}>

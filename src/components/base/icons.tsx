@@ -551,3 +551,25 @@ export const AppLogo = ({ size = 28 }: { size?: number }) => (
     <rect x="19.8" y="13.4" width="2" height="3.6" rx="1" fill="var(--dsw-alias-brand-primary)" />
   </svg>
 )
+/**
+ * 收藏用的星星：outline 表示未收藏，filled 表示已收藏。
+ * 同一个组件带参数，避免调用方各写一份实心/空心两套图标。
+ */
+export const IconStar16 = ({ filled = false }: { filled?: boolean }) => (
+  <svg
+    width={16}
+    height={16}
+    viewBox="0 0 16 16"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+  >
+    <path
+      d="M8 1.6l1.98 4.01 4.43.64-3.2 3.13.75 4.41L8 11.7l-3.96 2.09.75-4.41-3.2-3.13 4.43-.64L8 1.6z"
+      fill={filled ? 'currentColor' : 'none'}
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinejoin="round"
+    />
+  </svg>
+)

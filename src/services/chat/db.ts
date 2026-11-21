@@ -3,7 +3,7 @@ import { buildSearchEntry } from './search.js'
 import { toSessionSummary, type Session, type SessionSummary } from './types.js'
 
 /** IndexedDB 存储结构版本；新增或调整存储、索引时递增。 */
-const DB_VERSION = 13
+const DB_VERSION = 14
 
 /** 文件原件按附件的本地 id 存储，所有引用同一 id 的消息共用一份；用于缩略图、打开查看，以及没有 serverId 时补传。 */
 export type StoredFile = {
@@ -38,6 +38,30 @@ interface ChatDB extends DBSchema {
    * 有几百个会话时逐个读详情做搜索会卡；这里一次 getAll 即可在内存里过滤。
    */
   searchIndex: { key: string; value: StoredSearchEntry }
+  /**
+   * 消息收藏。
+   *
+   * 独立成一个存储而不是在消息上打标记，理由有两个：
+   * 1. 消息只在会话打开时才加载，收藏列表要跨会话展示，不能依赖会话详情
+   * 2. 会话被删除时消息随之消失，但收藏应该活得比它久——
+   *    这里把正文快照一起存下来，原会话没了收藏依然可读
+   */
+  favorites: { key: string; value: StoredFavorite }
+}
+
+/** 一条消息收藏；正文存快照，原会话删掉后仍能显示 */
+export type StoredFavorite = {
+  /** 键 = 会话 id + 消息 id，保证同一条消息只收藏一次 */
+  id: string
+  sessionId: string
+  messageId: string
+  /** 收藏时的会话标题，原会话改名不影响这条记录 */
+  sessionTitle: string
+  role: 'user' | 'assistant'
+  /** 正文快照 */
+  text: string
+  /** 收藏时间，列表按它倒序 */
+  createdAt: number
 }
 
 /** 一条会话的搜索文本；message 单独存放便于定位到具体哪条命中 */
@@ -82,6 +106,7 @@ const getDB = () =>
         'filesStaging',
         'wallpaper',
         'searchIndex',
+        'favorites',
       ] as const) {
         if (!db.objectStoreNames.contains(name)) {
           db.createObjectStore(name, { keyPath: 'id' })
@@ -109,6 +134,63 @@ export const loadSession = async (id: string): Promise<Session | undefined> =>
 /** 取出全部搜索索引，供内存里过滤。几百条记录的量级，一次读完比逐条查快。 */
 export const loadSearchEntries = async (): Promise<StoredSearchEntry[]> =>
   (await getDB()).getAll('searchIndex')
+
+/** 读取全部收藏；排序交给调用方，存储层保持中立 */
+export const loadFavorites = async (): Promise<StoredFavorite[]> =>
+  (await getDB()).getAll('favorites')
+
+/** 新增或更新一条收藏；键相同即覆盖，天然去重 */
+export const saveFavorite = async (favorite: StoredFavorite): Promise<void> => {
+  await (await getDB()).put('favorites', favorite)
+}
+
+/** 取消收藏 */
+export const deleteFavorite = async (id: string): Promise<void> => {
+  await (await getDB()).delete('favorites', id)
+}
+
+/**
+ * 只改会话的收藏标记，不碰其他字段。
+ *
+ * 用场景：会话详情没加载时（只有汇总记录），改收藏不需要把整段会话读出来再写回去。
+ * 同时更新 sessions 与 sessionSummaries，保证下次打开会话时不会被旧值覆盖。
+ */
+export const setSessionStar = async (
+  id: string,
+  starred: true | undefined
+): Promise<void> => {
+  const tx = (await getDB()).transaction(['sessions', 'sessionSummaries'], 'readwrite')
+  await Promise.all([
+    (async () => {
+      try {
+        const sessions = tx.objectStore('sessions')
+        const session = await sessions.get(id)
+        if (session) {
+          if (starred) {
+            session.starred = true
+          } else {
+            delete session.starred
+          }
+          await sessions.put(session)
+        }
+        const summaries = tx.objectStore('sessionSummaries')
+        const summary = await summaries.get(id)
+        if (summary) {
+          if (starred) {
+            summary.starred = true
+          } else {
+            delete summary.starred
+          }
+          await summaries.put(summary)
+        }
+      } catch (error) {
+        abortTransaction(tx)
+        throw error
+      }
+    })(),
+    tx.done,
+  ])
+}
 
 /**
  * 为已有会话补齐搜索索引。

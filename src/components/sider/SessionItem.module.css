@@ -84,3 +84,12 @@
     font-size: 16px;
   }
 }
+
+/* 已收藏标记：跟着标题行，不占额外宽度 */
+.starMark {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 4px;
+  vertical-align: -2px;
+  color: var(--dsw-alias-brand-primary);
+}

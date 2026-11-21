@@ -1,8 +1,13 @@
 import clsx from 'clsx'
 import { memo, useState } from 'react'
 import { useTranslate } from '../../i18n/index.js'
-import { IconEditOutline16, IconEllipsisOutline16, IconTrashOutline16 } from '../base/icons.js'
-import { renameSession, selectSession } from '../../services/chat/store.js'
+import {
+  IconEditOutline16,
+  IconEllipsisOutline16,
+  IconStar16,
+  IconTrashOutline16,
+} from '../base/icons.js'
+import { renameSession, selectSession, toggleSessionStar } from '../../services/chat/store.js'
 import type { SessionSummary } from '../../services/chat/types.js'
 import { IconButton } from '../base/IconButton.js'
 import { Menu } from '../base/Menu.js'
@@ -55,10 +60,24 @@ export const SessionItem = memo(function SessionItem({
         closeMobileSider()
       }}
     >
-      <div className={styles.title}>{displayTitle}</div>
+      <div className={styles.title}>
+        {/* 已收藏的会话在标题前显示实心星，不必打开菜单也能看出来 */}
+        {session.starred ? (
+          <span className={styles.starMark} aria-label={t('sessionStarred')}>
+            <IconStar16 filled />
+          </span>
+        ) : null}
+        {displayTitle}
+      </div>
       <div className={styles.action} onClick={(event) => event.stopPropagation()}>
         <Menu
           options={[
+            {
+              key: 'star',
+              label: session.starred ? t('sessionUnstar') : t('sessionStar'),
+              icon: <IconStar16 filled={Boolean(session.starred)} />,
+              onSelect: () => toggleSessionStar(session.id),
+            },
             {
               key: 'rename',
               label: t('sessionItemMenuRenameOption'),

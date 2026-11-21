@@ -16,6 +16,7 @@ import { toggleSearchPanel, useSearchPanel } from '../search/searchPanelState.js
 import { ReadAloudButton } from './ReadAloudButton.js'
 import { CopyButton } from './CopyButton.js'
 import { ExportButton } from './ExportButton.js'
+import { FavoriteButton } from './FavoriteButton.js'
 import { ReplyArea } from './ReplyArea.js'
 import { useReplyView } from './useReplyView.js'
 import {
@@ -147,6 +148,10 @@ export const AssistantMessage = memo(function AssistantMessage({
             {answer?.markdown ? <ExportButton markdown={answer.markdown} /> : null}
             {responseText && !refused ? (
               <ReadAloudButton messageId={message.id} text={responseText} />
+            ) : null}
+            {/* 有正文才收藏：纯工具块或报错的回答收藏了也没内容可读 */}
+            {responseText && !refused ? (
+              <FavoriteButton sessionId={sessionId} messageId={message.id} />
             ) : null}
             <IconButton
               icon={<IconRefreshOutline16 />}

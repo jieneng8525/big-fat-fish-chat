@@ -1,0 +1,173 @@
+.wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: 2px 0;
+}
+
+/*
+ * 触发按钮：平时只露一颗星星，悬停才展开文字。
+ * 与会话项的 hover 行为一致，不占常驻视觉空间。
+ */
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.trigger:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+/* 星星常亮黄色：它是唯一的常驻视觉标识 */
+.star {
+  display: inline-flex;
+  color: #f5a623;
+}
+
+/*
+ * 文字和计数默认不占位（width 0 + overflow hidden），
+ * 悬停时再展开——否则按钮平时会宽出一截，把侧边栏底部撑得不协调。
+ */
+.label {
+  display: inline-block;
+  max-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  opacity: 0;
+  font-size: 13px;
+  line-height: 20px;
+  transition: max-width 160ms ease, opacity 160ms ease;
+}
+
+.trigger:hover .label,
+.trigger:focus-visible .label {
+  max-width: 120px;
+  opacity: 1;
+}
+
+.count {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--dsw-alias-label-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * 面板从星星上方弹出，并且**向右展开**。
+ *
+ * 两个方向都是必须的：
+ * - 向上：侧边栏底部贴着窗口下沿，向下弹会被裁掉
+ * - 向右：侧边栏只有 261px，面板 300px。原来用 left:50% + translateX(-50%)
+ *   居中，左右各溢出 20px，左侧被侧边栏边界裁掉、文字显示不全（实测过）。
+ *   改成从星星位置向右长出去，溢出部分落在主内容区，不会被裁。
+ *
+ * 左偏移取负值是为了让面板左缘和星星对齐而不是贴到侧边栏最左边：
+ * 星星在按钮中央，按钮本身有内边距，往左退一点视觉上才不偏。
+ */
+.panel {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  z-index: 40;
+  width: 300px;
+  max-width: 80vw;
+  max-height: 50vh;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(-16px);
+  overflow: hidden;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 12px;
+  background: var(--dsw-alias-bg-base);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 22%);
+}
+
+.panelTitle {
+  padding: 10px 12px 6px;
+  font: var(--dsw-font-s-strong-14);
+  color: var(--dsw-alias-label-primary);
+}
+
+.list {
+  margin: 0;
+  padding: 0 4px 6px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.item {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  text-align: start;
+  cursor: pointer;
+}
+
+.item:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+/* 原会话已删除：仍可读，但不再可点 */
+.orphaned {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.itemHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.itemSession {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+
+.orphanTag {
+  flex-shrink: 0;
+  padding: 0 5px;
+  border-radius: 6px;
+  background: var(--dsw-alias-interactive-bg-hover);
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.itemText {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  margin-top: 3px;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-secondary);
+  word-break: break-all;
+}
+
+.empty {
+  padding: 14px 12px 16px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+}

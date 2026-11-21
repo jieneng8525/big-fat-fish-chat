@@ -10,6 +10,7 @@ import {
   selectSession,
   useChatStore,
 } from '../services/chat/store.js'
+import { useFavorites } from '../services/chat/favoritesStore.js'
 import { SearchPanel } from '../components/search/SearchPanel.js'
 import { closeSearchPanel } from '../components/search/searchPanelState.js'
 import { useGlobalShortcuts } from './shortcuts.js'
@@ -82,6 +83,14 @@ export const App = () => {
 
   useEffect(() => {
     void initChat()
+    /*
+     * 收藏状态要在会话列表就绪之后再读：判断「原会话是否还在」要用到 sessions。
+     * 失败不影响聊天，按钮停在禁用态即可。
+     */
+    void useFavorites
+      .getState()
+      .refresh()
+      .catch(() => {})
     // 首次打开先在设置里输入 API Key
     ensureApiKey()
   }, [])
