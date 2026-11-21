@@ -1,75 +1,122 @@
-# chat-demo
+# 大肥鱼Chat (Big Fat Fish Chat)
 
 English | [简体中文](README.zh-CN.md)
 
-A static chat demo powered by the DeepSeek API. No application backend is required: the browser connects directly to the configured API service.
+A **fully static** chat client built on the official [DeepSeek](https://www.deepseek.com) API.
 
-You can [try the app online](https://deepseek-ai.github.io/chat-demo/) or download the archive from [Releases](https://github.com/deepseek-ai/deepseek-chat-demo/releases), extract it, and double-click `index.html` to use it locally without installation or a build. Enter your API key in Settings before your first chat.
-
-## Getting started
-
-Install Node.js 22.12+ and pnpm, then run:
-
-```sh
-git clone https://github.com/deepseek-ai/chat-demo.git
-cd chat-demo
-pnpm install
-pnpm dev
-```
-
-Open http://localhost:8090.
-
-To build the static site:
-
-```sh
-pnpm build
-```
-
-The output is written to `dist/`. Deploy it to a static web server or open `dist/index.html` directly. Opening the file directly requires browser support for storage on `file://` pages and an API service that permits their cross-origin requests.
+**No backend.** The browser talks to `api.deepseek.com` directly, and your API key lives only in your own browser's localStorage — it never passes through any third-party server. The whole site is a handful of static files you can drop onto any static host.
 
 ## Features
 
-- Multiple conversations with automatic titles, renaming, and deletion; edit prompts, regenerate replies, and switch between message branches.
-- Streaming replies, deep thinking, smart search, link reading, and source citations; stop generation or continue eligible replies.
-- Upload, paste, or drag and drop attachments; use voice input and read replies aloud. A live audio spectrum appears in the first row of the input area while recording on mobile.
-- Markdown, syntax highlighting, KaTeX math, and Mermaid diagrams.
-- Simplified Chinese and English, light and dark themes, mobile layouts, location settings, and chat history import and export.
+**Chat**
+- Streaming output, collapsible thinking blocks, and web search with cited sources
+- Multiple answer versions: regenerate, then switch between `1/3`, `2/3` to compare
+- Edit your question, switch branches, continue from any point in the conversation
+- File attachments (images, PDF, Office documents)
+- Markdown rendering: syntax highlighting, tables, KaTeX math, Mermaid diagrams
 
-## Data and storage
+**Data**
+- Conversations and attachments persist in the browser's IndexedDB — closing the tab loses nothing
+- Import / export history (compatible with ZIP files exported from DeepSeek)
+- **Full-text search** across every conversation, with keyword highlighting
 
-Your API key and settings are stored in the browser's localStorage. Conversations and original attachments are stored in IndexedDB. Local data is isolated by browser profile and site origin. Sending messages, uploading attachments, and using speech features sends the relevant content to the configured API service.
+**Interface**
+- Light and dark themes
+- **Wallpaper**: pick an image or video from a local folder as the background (Chromium-based browsers only)
+- Text colors adapt automatically to the wallpaper's brightness for readability
+- Export conversations to TXT / Markdown / HTML / Word / Excel / PowerPoint
+- Shortcuts: `Ctrl+K` new chat, `Ctrl+F` search, `Esc` then `F2` to stop generating
 
-History import and export in Settings use ZIP archives. After confirmation and successful validation, importing replaces all local conversations and attachments. Exports include conversations and locally available original images, but exclude API keys, settings, and original non-image attachments. See the [history import/export documentation (Chinese)](src/services/chat/history/README.md) for the archive format and preservation details.
+**Other**
+- Usage stats: locally accumulated token counts with an estimated cost
+- Account balance: queries the official `/user/balance` endpoint for the real balance
 
-Settings → Data → Delete all chats clears all local conversations, original attachments, and unsent drafts after confirmation. It stops ongoing replies and returns to a new chat. Your API key and settings are preserved; files already uploaded to the API service are not deleted.
+## Usage
+
+### Option 1: Use it online
+
+Open the deployed URL and enter your own [DeepSeek API key](https://platform.deepseek.com/api_keys) in Settings the first time.
+
+### Option 2: Download and run — nothing to install
+
+Download the archive from [Releases](../../releases), extract it, and **double-click `index.html`**. No Node.js, no build step.
+
+### Option 3: Build it yourself
+
+Requires Node.js 20 or newer:
+
+```sh
+git clone <repository-url>
+cd <project-directory>
+corepack pnpm install
+corepack pnpm dev     # dev server at http://localhost:8090
+```
+
+Production build:
+
+```sh
+corepack pnpm build   # output in dist/
+```
+
+`dist/` contains only static files. Upload it to any static host (Cloudflare Pages, Vercel, GitHub Pages, Nginx — anything).
+
+**Cloudflare Pages settings**:
+
+| Setting | Value |
+|---|---|
+| Build command | `corepack pnpm install && corepack pnpm build` |
+| Build output directory | `dist` |
+
+See [`docs/deploy-cloudflare-pages.md`](docs/deploy-cloudflare-pages.md) for step-by-step instructions and a security checklist.
+
+## About API key security
+
+**Your key stays in your own browser's localStorage** — this project has no server to upload it to.
+
+The trade-offs you should know about:
+
+- You must **re-enter it** after switching browsers or machines, or after clearing site data
+- **Don't enter your key on a public computer**
+- Anyone visiting a site you deploy sees an empty input field and **cannot obtain your key**
+
+**This project will never ship a built-in key.** If you fork it and want a turnkey build for your team, be aware: any key compiled into frontend code is visible in plaintext via DevTools, which is effectively publishing it. The only way to actually hide a key is a server-side proxy — and then it's no longer a static site.
+
+## Where data is stored
+
+Everything stays on your machine. Nothing is uploaded anywhere.
+
+| Data | Location |
+|---|---|
+| Conversations, attachments, search index | IndexedDB database `chat-demo` |
+| API key, theme, language and other settings | localStorage `chat-demo:*` |
+| Wallpaper folder permission | IndexedDB `chat-demo-wallpaper-handles` |
+
+Clearing browser site data **wipes all of it**. Back up important conversations with "Export all conversation history" first.
 
 ## Development
 
-| Command       | Description                  |
-| ------------- | ---------------------------- |
-| `pnpm dev`    | Start the development server |
-| `pnpm build`  | Build into `dist/`           |
-| `pnpm type`   | Run TypeScript type checks   |
-| `pnpm lint`   | Lint with oxlint             |
-| `pnpm format` | Format with oxfmt            |
-
-[rspack.config.ts](rspack.config.ts) uses `https://api.deepseek.com` by default. Use `createConfig({ apiOrigin, devServer })` to customize the API origin and development server proxy.
-
-Chat uses `deepseek-flash` by default through Anthropic-compatible Messages / Files APIs. Speech features use ASR / TTS endpoints. Requests include extensions for search, link reading, titles, and `latest_reminder`, so the configured service must support the corresponding capabilities. Supported attachment formats are determined by server-side validation.
-
-```text
-src/
-  app/                 Application layout, themes, and global styles
-  components/          Chat, settings, Markdown, and other UI components
-  i18n/                English and Chinese translations
-  services/
-    api/               API requests, SSE, and protocol types
-    chat/              Conversations, message branches, storage, and history import/export
-    markdown/          Markdown parsing, syntax highlighting, and diagrams
-    speech/            Audio recording and read-aloud playback
-  utils/               Shared utilities
+```sh
+corepack pnpm dev     # dev server with hot reload
+corepack pnpm type    # type check
+corepack pnpm lint    # lint
+corepack pnpm build   # production build
 ```
+
+Stack: React 18 + TypeScript + Zustand + Rspack (SWC).
+
+**Note**: after running `pnpm build`, the old `dist/` stays around. Delete it before starting the dev server again — otherwise the dev server also serves those stale files as static assets, which shows up as hot-reload 404s and CSS being served as `text/html`.
+
+## Known limitations
+
+- **Choosing a wallpaper folder** works only in Chromium-based browsers (Chrome, Edge). Firefox and Safari lack the File System Access API.
+- **Automatically following your desktop wallpaper is impossible**: browsers cannot read which image Wallpaper Engine (or similar) is currently displaying, so you must pick a file manually. See [`docs/desktop-wallpaper-note.md`](docs/desktop-wallpaper-note.md) for the details.
+- **Prompts live in the frontend**: anyone can edit the code to change them, so they are not a security boundary.
+- **No cross-device sync**: data is local, so a new device starts empty unless you export and import manually.
+
+## Credits
+
+Based on the official [DeepSeek chat-demo](https://github.com/deepseek-ai/chat-demo).
 
 ## License
 
-[MIT](LICENSE). The build copies the license to `dist/LICENSE`; include it when distributing the app. Third-party dependencies are subject to their own licenses.
+MIT — see [LICENSE](LICENSE).
