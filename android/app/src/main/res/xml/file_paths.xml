@@ -1,5 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  FileProvider 暴露给其他 App 的路径白名单。
+
+  Capacitor 默认只给了 external-path 和 cache-path。这里补 files-path：
+  打开 HTML 代码块时先把内容写进 App 私有 files 目录，再通过 FileProvider
+  生成 content:// URI 交给系统打开。
+
+  为什么不用 data: URL —— Capacitor 的 Browser 插件走 CustomTabsIntent，
+  Chrome 自定义标签页拒绝加载 data: 开头的地址。
+  为什么不用 blob: URL —— blob 是当前 WebView 进程内的地址，
+  其他 App（系统浏览器）拿不到。
+-->
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <external-path name="my_images" path="." />
     <cache-path name="my_cache_images" path="." />
+    <files-path name="my_files" path="." />
+    <external-files-path name="my_external_files" path="." />
+    <external-cache-path name="my_external_cache" path="." />
 </paths>

@@ -57,6 +57,66 @@ $apk = 'android\app\build\outputs\apk\debug\app-debug.apk'
 
 ---
 
+## Resolved: HTML code block preview opened as a new window and quit the app
+
+**Symptom**: tapping "open in browser" on an HTML code block opened it, but pressing Back or swiping right closed the whole app instead of returning to the chat.
+
+**Four Web-layer approaches were tried and all failed** (all measured on Android 17 / API 37 emulator):
+
+| Approach | Result |
+|---|---|
+| `window.open(blobUrl, '_blank')` | System took over as an in-place window; Back exits the app |
+| `Browser.open('data:text/html;base64,...')` | `Unable to display URL` — Chrome Custom Tabs refuse `data:` |
+| `location.href = blobUrl` | No history entry created, so Back still exits (measured `history.length === 1`) |
+| `Share.share({ url })` | Works, but it is a share sheet, not a browser |
+
+**What works**: a custom Capacitor plugin that writes the HTML into the app cache, converts it through `FileProvider` to a `content://` URI, and fires `Intent.ACTION_VIEW`. That launches a **separate browser process**, so Back returns to the app.
+
+Files: `android/app/src/main/java/chat/bigfatfish/app/OpenInBrowserPlugin.java`,
+`android/app/src/main/res/xml/file_paths.xml` (needs `cache-path`, already present by default),
+`src/services/nativeShell.ts` (`openHtmlNatively`).
+
+### ⚠ Registration order matters
+
+```java
+registerPlugin(OpenInBrowserPlugin.class);   // MUST come first
+super.onCreate(savedInstanceState);
+```
+
+`BridgeActivity.onCreate` calls `this.load()` internally, which runs `bridgeBuilder.create()`. After that the plugin list is frozen. Registering **after** `super.onCreate` compiles fine and lands in the APK, but `window.Capacitor.Plugins.OpenInBrowser` is `undefined` at runtime. This cost a debugging round — check with:
+
+```
+adb shell ...  # then via CDP:
+Object.keys(window.Capacitor.Plugins)
+```
+
+---
+
+## Downloads in the app
+
+`<a download>` does nothing useful inside a WebView — there is no `DownloadListener`, so it looks like the browser jumps to a download page and never downloads.
+
+`saveToDownloads` in `nativeShell.ts` writes through `Filesystem` into `Directory.Documents` (public, survives uninstall) and then raises the system share sheet so the user decides where it goes.
+
+**Re-entrancy guard**: `Share.share()` stays pending until the user picks something. Calling it again while the sheet is open throws `Can't share while sharing is in progress`, which the caller would surface as a bogus "save failed". The `shareInFlight` flag prevents that; the file is already on disk by then, so a suppressed sheet is not an error.
+
+---
+
+## Preview HTML follows the browser colour scheme
+
+`src/services/previewTheme.ts` wraps the model-generated HTML and injects a `<style>` with `color-scheme: light dark` plus a `@media (prefers-color-scheme: dark)` block.
+
+Two constraints drove the implementation:
+
+1. **Do not parse and re-serialise** the HTML with `DOMParser` — that rewrites self-closing tags and attribute order, changing content the model produced. Only minimal string surgery is done.
+2. **Insert before the model's own styles** so the injected rules have lower priority and only fill in what the model left undefined. A model that writes `body { background: #fff }` keeps its own colour.
+
+Handled shapes: full document with `<head>`, full document without `<head>`, bare fragment, and a fragment that already carries `<!doctype>`.
+
+Note `prefers-color-scheme` follows the **system** setting (mobile Chrome has no independent theme switch), so "follows the browser" means "follows the OS".
+
+---
+
 ## Not a bug: light theme keeps dark sidebar when a video wallpaper is set
 
 **Symptom**: with the light theme selected and a *video* wallpaper, the sidebar and input box stay dark-coloured.

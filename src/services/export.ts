@@ -14,6 +14,10 @@ export type OfficeFormat = 'docx' | 'xlsx' | 'pptx'
 /** 菜单里展示的全部导出格式 */
 export type AnyExportFormat = ExportFormat | OfficeFormat
 
+import { showToast } from '../components/base/toastState.js'
+import { isNative, openHtmlNatively, saveToDownloads } from './nativeShell.js'
+import { withPreviewTheme } from './previewTheme.js'
+
 export const EXPORT_FORMATS: ExportFormat[] = ['txt', 'md', 'html']
 export const OFFICE_FORMATS: OfficeFormat[] = ['docx', 'xlsx', 'pptx']
 
@@ -120,11 +124,35 @@ export const downloadExport = (
 ): string => {
   const { blob, extension } = buildExport(format, markdown, title)
   const name = `${suggestFileName(markdown, 'deepseek-reply')}.${extension}`
-  triggerDownload(blob, name)
+  void deliver(blob, name)
   return name
 }
 
-/** 通用下载：创建临时链接点一下就回收 */
+/**
+ * 下载分发：网页端走浏览器下载，App 端走 Filesystem + 分享面板。
+ *
+ * 为什么必须分开：WebView 没有实现 DownloadListener，
+ * `<a download>` 在 App 里表现为「跳到下载页但没下载」。
+ * 详见 nativeShell.ts 顶部注释。
+ */
+const deliver = async (blob: Blob, name: string): Promise<void> => {
+  if (isNative()) {
+    const result = await saveToDownloads(blob, name)
+    if (result.ok) {
+      showToast(
+        result.shared
+          ? { key: 'downloadSavedShared', params: { name } }
+          : { key: 'downloadSaved', params: { name } }
+      )
+    } else {
+      showToast({ key: 'downloadFailed', params: { message: result.reason }, type: 'error' })
+    }
+    return
+  }
+  triggerDownload(blob, name)
+}
+
+/** 通用下载（网页端）：创建临时链接点一下就回收 */
 const triggerDownload = (blob: Blob, name: string) => {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
@@ -155,7 +183,7 @@ export const downloadOffice = async (
   const bytes = build(markdown, title)
   const name = `${suggestFileName(markdown, 'deepseek-reply')}.${format}`
   // 复制到独立的 ArrayBuffer，避免把整个底层 buffer 交给 Blob
-  triggerDownload(new Blob([bytes.slice().buffer as ArrayBuffer], { type: OFFICE_MIME[format] }), name)
+  void deliver(new Blob([bytes.slice().buffer as ArrayBuffer], { type: OFFICE_MIME[format] }), name)
   return name
 }
 
@@ -263,25 +291,41 @@ export const downloadCodeBlock = (
     return null
   }
   const name = `${baseName}.${extension}`
-  triggerDownload(new Blob([code], { type: mimeOf(extension) }), name)
+  void deliver(new Blob([code], { type: mimeOf(extension) }), name)
   return { name, extension }
 }
 
 /**
- * 在浏览器新标签页里直接打开代码块的渲染结果，不落盘。
+ * 打开代码块的渲染结果。
  *
- * 用 Blob URL 而不是 data: URL —— Chrome 已禁止顶层导航到 data:text/html，
- * window.open('data:...') 会被静默拦截。blob: 同源、可直接在新标签页渲染。
- * 内容是模型生成的 HTML，放在新标签页里等同于用户打开任意网页，
- * 它拿不到本应用的 localStorage / IndexedDB（不同源）。
+ * 网页端：在新标签页里打开 Blob URL，不落盘。
+ *   blob: 同源、可直接渲染；不用 data: —— Chrome 已禁止顶层导航到 data:text/html。
+ *   内容是模型生成的 HTML，在新标签页里等同于用户打开任意网页，
+ *   拿不到本应用的 localStorage / IndexedDB（不同源）。
+ *
+ * App 端：window.open 会让系统接管成新窗口，用户按返回键或左右滑动
+ *   会把整个 App 退掉（实测确认）。改走原生路径：写成缓存文件，
+ *   经 FileProvider 拉起分享面板，用户选「浏览器」打开，
+ *   跳出去以后再返回就回到 App。
  *
  * 只对 HTML 代码块开放；其他格式没有「浏览器直接打开」的意义。
  */
-export const openCodeBlockInBrowser = (code: string, lang: string): boolean => {
+export const openCodeBlockInBrowser = async (code: string, lang: string): Promise<boolean> => {
   if (extensionOf(lang.toLowerCase(), code) !== 'html') {
     return false
   }
-  const url = URL.createObjectURL(new Blob([code], { type: 'text/html;charset=utf-8' }))
+  // 包一层跟随浏览器深浅色的样式，见 previewTheme.ts 顶部说明
+  const themed = withPreviewTheme(code)
+  if (isNative()) {
+    const ok = await openHtmlNatively(themed, `preview-${Date.now()}.html`)
+    if (ok) {
+      showToast({ key: 'htmlOpenedInBrowser' })
+    } else {
+      showToast({ key: 'htmlOpenFailed', type: 'error' })
+    }
+    return ok
+  }
+  const url = URL.createObjectURL(new Blob([themed], { type: 'text/html;charset=utf-8' }))
   const opened = window.open(url, '_blank', 'noopener')
   // 新标签页若被拦截，及时回收；未拦截时延迟回收给加载留时间
   if (!opened) {

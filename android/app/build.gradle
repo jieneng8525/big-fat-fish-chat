@@ -7,8 +7,12 @@ android {
         applicationId "chat.bigfatfish.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // 版本号只有一个来源：package.json。
+        // 之前这里写死 1.0，与 package.json 的 0.1.1 对不上，安装后
+        // 系统设置里显示的版本和项目版本永远不一致。
+        // 发布新版本时只需改 package.json 的 version，然后重新 cap sync + 打包。
+        versionCode 2
+        versionName "0.2.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

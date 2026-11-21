@@ -32,6 +32,20 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        /*
+         * ⚠ 自定义插件必须在 super.onCreate() **之前**注册。
+         *
+         * BridgeActivity.onCreate 内部是这样的：
+         *     super.onCreate(savedInstanceState);                 // 行 23
+         *     bridgeBuilder.addPlugins(loader.loadPluginClasses()); // 行 37
+         *     this.load();                                          // 行 42
+         * load() 里执行 bridgeBuilder.create()，Bridge 一旦创建，插件列表就定死了。
+         * 所以写在 super.onCreate() 之后调 registerPlugin() 只是往已建好的
+         * Builder 上加，不会生效——实测 APK 里类编译进去了，但运行时
+         * window.Capacitor.Plugins.OpenInBrowser 是 undefined。
+         */
+        registerPlugin(OpenInBrowserPlugin.class);
+
         super.onCreate(savedInstanceState);
 
         Window window = getWindow();

@@ -65,14 +65,21 @@ const CodeInfoRow = ({
           className={styles.button}
           title={t('openInBrowserHint')}
           onClick={() => {
-            // 新标签页被拦截时 window.open 返回 null，提示用户放行
-            if (!openCodeBlockInBrowser(code, infostring)) {
-              showToast({ key: 'openBlocked', type: 'error' })
-              return
-            }
-            // 这段 HTML 的样式由模型生成，它读不到系统深浅色，深色模式下可能白底。
-            // 这不是本项目能改的，提示一次，说明见 docs/html-open-note.md
-            showToast({ key: 'openInBrowserNote' })
+            /*
+             * openCodeBlockInBrowser 是异步的（App 端要写临时文件、拉起系统面板），
+             * 必须 await 再判断结果。直接写 if (!openCodeBlockInBrowser(...))
+             * 判断的永远是 Promise 对象本身，恒为 false，提示逻辑会静默失效。
+             */
+            void (async () => {
+              const opened = await openCodeBlockInBrowser(code, infostring)
+              if (!opened) {
+                showToast({ key: 'openBlocked', type: 'error' })
+                return
+              }
+              // 这段 HTML 的样式由模型生成，它读不到系统深浅色，深色模式下可能白底。
+              // 这不是本项目能改的，提示一次，说明见 docs/html-open-note.md
+              showToast({ key: 'openInBrowserNote' })
+            })()
           }}
         >
           <IconLinkOutline16 />
