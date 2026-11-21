@@ -127,7 +127,25 @@ corepack pnpm cap:apk      # build dist -> sync -> gradlew assembleDebug
 
 Output: `android/app/build/outputs/apk/debug/app-debug.apk`
 
-The debug APK is unsigned for release purposes; add your own keystore before distributing.
+> ### ⚠️ Never distribute a prebuilt APK — rebuild and sign it yourself
+>
+> The APK produced above is signed with the **shared Android debug certificate**
+> (`CN=Android Debug`), whose private key exists on every machine that has the Android SDK.
+> Anyone who receives such an APK can re-sign a modified build with the same identity,
+> and Android will treat it as a legitimate update — installing it over the original
+> while keeping `localStorage` (your API key) and IndexedDB (every conversation).
+>
+> Two builds of this project also share the same `applicationId`. If someone else's build
+> collides with yours, Android refuses with `INSTALL_FAILED_UPDATE_INCOMPATIBLE`, and users
+> often "fix" that by uninstalling — which deletes all local chat history.
+>
+> **If you want to hand an APK to another person: generate your own keystore, change the
+> `applicationId` to something you own, and sign it under your own name.** Steps are in
+> [`docs/android-distribution-warning.md`](docs/android-distribution-warning.md).
+>
+> Distribution side effects (OS warnings, vendor security apps flagging it, forced
+> uninstall, lost data) are outside this project's control and are **not the author's
+> responsibility**. Building and signing it yourself is the only sound path.
 
 ### Android-specific behaviour
 

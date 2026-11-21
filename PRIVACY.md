@@ -52,3 +52,22 @@
 - **构建时把 Key 注入产物**：不做，也不接受 PR 添加。纯前端场景下 Key 必然可见；想真正藏住 Key 只有加服务端代理一条路，那就不再是纯静态站点。
 
 如未来确有跨设备同步需求，**推荐的路径仍是「导出 / 导入 ZIP」**，那是零成本、零服务器、零新风险的方案。
+
+## 安卓 APK 的分发风险（重要）
+
+本仓库**不提供任何预编译 APK**，也不推荐分发自己打出来的包。
+
+`pnpm cap:apk` 产出的 `app-debug.apk` 用的是**安卓公用调试证书**
+（`CN=Android Debug`），这把证书的私钥在所有装了 Android SDK 的机器上都是同一份。
+拿到这个 APK 的人可以用同一把私钥重签一个改过的包，系统会当成正常更新覆盖安装，
+并保留本地数据——**包括 `localStorage` 里的 API Key 和 IndexedDB 里的全部聊天记录**。
+
+此外，本项目 `applicationId` 固定为 `chat.bigfatfish.app`。两个人各自打的包
+包名相同、签名不同，安卓会报 `INSTALL_FAILED_UPDATE_INCOMPATIBLE` 装不上；
+用户若用「先卸载再装」来解决，**会连同全部聊天记录一起丢失**。
+
+**要分发给别人，请自己生成 keystore、把包名改成你自己的、以你自己的名义签名。**
+步骤见 [docs/android-distribution-warning.md](docs/android-distribution-warning.md)。
+
+因使用非正式签名的 APK 而导致的系统告警、被安全软件标记、被强制卸载、
+数据被删除等后果，**本项目作者不承担责任**。

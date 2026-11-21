@@ -36,8 +36,16 @@ android/app/*.iml
 # 构建进 APK 的网页副本：由 `cap sync` 从 dist/ 生成，不需要进版本库
 android/app/src/main/assets/public/
 
-# KeyStore 与签名文件，绝不入库
+# KeyStore 与签名文件，绝不入库。
+# 无路径前缀 = 整个仓库生效，所以放在项目根、android/ 或任意子目录都会被忽略。
+# 一旦签名私钥进了公开仓库，任何人都能用你的名义发布「可覆盖安装」的更新。
 *.jks
 *.keystore
+*.p12
+*.bks
 android/app/*.jks
 android/app/*.keystore
+
+# 签名口令如果被写进文件（不推荐，应该用环境变量），也不要入库
+signing.properties
+android/keystore.properties

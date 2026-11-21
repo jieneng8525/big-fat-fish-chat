@@ -127,7 +127,24 @@ corepack pnpm cap:apk      # 构建 dist -> 同步 -> gradlew assembleDebug
 
 产物在 `android/app/build/outputs/apk/debug/app-debug.apk`。
 
-这个 debug 包不能直接发布，分发前要配自己的 keystore 签名。
+> ### ⚠️ 不要把构建好的 APK 直接发给别人，请自己重新编译、自己签名
+>
+> 上面打出来的包用的是**安卓公用调试证书**（`CN=Android Debug`），
+> 这把证书的私钥在所有装了 Android SDK 的机器上都一样。
+> 任何人拿到这个 APK，都能用同一把私钥重签一个改过的包，
+> 系统会把它当成正常更新直接覆盖安装，并**保留原有的**
+> `localStorage`（你的 API Key）和 IndexedDB（全部聊天记录）。
+>
+> 另外，本项目 `applicationId` 是固定的，两个人各打一份包名相同但签名不同，
+> 安卓会报 `INSTALL_FAILED_UPDATE_INCOMPATIBLE` 装不上；
+> 用户常见的"解决办法"是先卸载——**那会连同全部聊天记录一起删掉**。
+>
+> **如果你要把 APK 交给第二个人：自己生成 keystore、把包名改成你自己的、
+> 以你自己的名义签名。** 具体步骤见
+> [`docs/android-distribution-warning.md`](docs/android-distribution-warning.md)。
+>
+> 分发可能带来的系统告警、被厂商安全中心标记、被强制卸载、数据丢失，
+> 都超出本项目能控制的范围，**作者不承担责任**。自己编译自己签名是唯一稳妥的做法。
 
 ### 安卓端的特有行为
 
