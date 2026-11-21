@@ -39,15 +39,15 @@
 
 ### 方式二：下载即用，不装任何东西
 
-从 [Releases](../../releases) 下载压缩包，解压后**双击 `index.html`** 就能在本地使用，无需安装 Node.js，无需构建。
+从 [Releases](releases) 下载压缩包，解压后**双击 `index.html`** 就能在本地使用，无需安装 Node.js，无需构建。
 
 ### 方式三：自己构建
 
 需要 Node.js 20 或以上：
 
 ```sh
-git clone <仓库地址>
-cd <项目目录>
+git clone https://github.com/<你的用户名>/<仓库名>.git   # 换成这个仓库的真实地址
+cd <仓库名>
 corepack pnpm install
 corepack pnpm dev     # 开发服务器：http://localhost:8090
 ```

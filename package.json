@@ -5,6 +5,7 @@
   "license": "MIT",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@12.6.0",
   "scripts": {
     "dev": "rspack serve -c rspack.config.ts",
     "build": "rimraf dist && cross-env NODE_ENV=production rspack build -c rspack.config.ts",

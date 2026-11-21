@@ -39,15 +39,15 @@ Open the deployed URL and enter your own [DeepSeek API key](https://platform.dee
 
 ### Option 2: Download and run — nothing to install
 
-Download the archive from [Releases](../../releases), extract it, and **double-click `index.html`**. No Node.js, no build step.
+Download the archive from [Releases](releases), extract it, and **double-click `index.html`**. No Node.js, no build step.
 
 ### Option 3: Build it yourself
 
 Requires Node.js 20 or newer:
 
 ```sh
-git clone <repository-url>
-cd <project-directory>
+git clone https://github.com/<your-name>/<repo-name>.git   # replace with this repo's address
+cd <repo-name>
 corepack pnpm install
 corepack pnpm dev     # dev server at http://localhost:8090
 ```
