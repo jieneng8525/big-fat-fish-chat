@@ -13,8 +13,33 @@
 
 import { openDB } from 'idb'
 
-/** 判断当前浏览器是否具备目录授权能力；不具备时调用方应隐藏整个入口 */export const supportsDirectoryFollow = (): boolean =>
-  typeof window !== 'undefined' && typeof (window as { showDirectoryPicker?: unknown }).showDirectoryPicker === 'function'
+/** Capacitor 注入到 window 上的运行时对象（只需用到它这一个方法） */
+type CapacitorRuntime = {
+  isNativePlatform?: () => boolean
+}
+
+/**
+ * 判断当前环境是否具备「授权目录 + 从中选壁纸」的能力；
+ * 不具备时调用方必须隐藏整个入口，不要留一个点了没反应的按钮。
+ *
+ * 只看 showDirectoryPicker 是否存在是不够的——实测安卓 WebView
+ * （Capacitor 8 / Android 17）里这个函数**存在**，但调用必然失败：
+ * 系统层没有目录选择器的实现。于是入口照样渲染出来，用户点了没反应。
+ *
+ * 所以先排除原生壳：Capacitor 会注入 window.Capacitor，
+ * 其 isNativePlatform() 返回 true 就说明跑在 App 里，直接判为不支持。
+ * 网页端（Chrome / Edge）行为不变。
+ */
+export const supportsDirectoryFollow = (): boolean => {
+  if (typeof window === 'undefined') {
+    return false
+  }
+  const capacitor = (window as { Capacitor?: CapacitorRuntime }).Capacitor
+  if (capacitor?.isNativePlatform?.() === true) {
+    return false
+  }
+  return typeof (window as { showDirectoryPicker?: unknown }).showDirectoryPicker === 'function'
+}
 
 /** 目录授权状态下可选的壁纸文件 */
 export type DirectoryCandidate = {

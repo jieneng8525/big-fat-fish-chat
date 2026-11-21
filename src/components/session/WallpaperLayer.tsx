@@ -233,6 +233,14 @@ export const WallpaperLayer = () => {
  *
  * 阈值 0.5：亮度低于一半时，深色文字在壁纸上已经无法达到 4.5 的对比度，
  * 必须换成浅色文字 + 压暗遮罩。App 那一层也用这个函数决定文字变量，两处必须一致。
+ *
+ * ⚠ brightness 为 null（取不到亮度）时必须返回 false，走浅色主题原本的配色。
+ *
+ * 曾经试过「取不到就按暗壁纸处理」，结果更糟：安卓 WebView 里视频壁纸的
+ * canvas.getImageData 必然抛 SecurityError（硬件解码画面不进可读 canvas），
+ * 于是 brightness 恒为 null，浅色主题下整套深色变量被套上去——
+ * 侧边栏、输入框全变深，等于把「文字看不清」换成了「整个界面变深」。
+ * 换问题不等于修问题，所以回退。
  */
 export const isDarkWallpaper = (brightness: number | null): boolean =>
   brightness !== null && brightness < 0.5
@@ -244,12 +252,31 @@ export const isDarkWallpaper = (brightness: number | null): boolean =>
  * 暗壁纸：改用黑色压暗，配浅色文字。实测 rgb(75,65,80) 的壁纸
  *   压暗 20% 后浅色次要文字对比度即达 7.49（要求 4.5）；
  *   而走白纱路线要 60% 以上才勉强达标，壁纸已经被洗没了。
+ *
+ * ⚠ 亮度未知（brightness === null）：给 45% 白纱。
+ *
+ * 为什么会拿不到亮度——这是平台限制，不是实现缺陷：
+ *   Android WebView 里对硬件解码的视频帧调用 canvas.getImageData()
+ *   会抛 SecurityError，画面不进入可读的 canvas 像素。
+ *   于是视频壁纸的亮度恒为 null，图片壁纸不受影响（图片能正常取样）。
+ *
+ * 为什么是白纱而不是切深色配色：
+ *   换成「全套深色变量」会连带把侧边栏、输入框一起变深，
+ *   用户选了浅色主题却得到深色界面，等于用一个问题换另一个问题（踩过）。
+ *   白纱只影响壁纸层，不动任何界面配色。
+ *
+ * 代价（必须让用户知道）：
+ *   45% 白纱会把视频壁纸明显洗淡发白。这是「保证文字可读」与
+ *   「保留壁纸观感」之间唯一可行的折中。
+ *   **强烈建议在浅色主题下不要用视频壁纸**——改用图片，或切到深色主题。
  */
 const computeScrim = (brightness: number | null): number => {
-  const b = brightness ?? 0.5
-  if (isDarkWallpaper(b)) {
+  if (brightness === null) {
+    return 0.45
+  }
+  if (isDarkWallpaper(brightness)) {
     // 暗壁纸：压暗幅度随暗度增加，但不必太深——浅色文字本身对比度就够
-    const darkness = 1 - b / 0.5 // 0 在阈值处，1 在纯黑
+    const darkness = 1 - brightness / 0.5 // 0 在阈值处，1 在纯黑
     return 0.1 + darkness * 0.25 // 10% ~ 35%
   }
   // 亮壁纸：保留壁纸原色，只加极少白纱

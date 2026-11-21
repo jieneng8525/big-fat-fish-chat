@@ -182,6 +182,8 @@ export const zh = {
   wallpaperErrorRead: '壁纸读取失败，请重试',
   wallpaperErrorTooLarge: '文件过大，请换小一点的',
   wallpaperFollowLabel: '从壁纸目录选择',
+wallpaperVideoWarnTitle: '⚠⚠⚠ 视频壁纸在浅色主题下会严重发白',
+  wallpaperVideoWarnBody: '⚠⚠⚠ 强烈建议切换到深色主题。\n\n原因：安卓 WebView 无法读取视频帧的像素，程序判断不出这段视频是亮是暗，只能退回固定的半透明白纱保证文字可读。代价是视频被明显洗白、细节丢失。\n\n图片壁纸不受影响（能正确测出亮度并自动配平）；视频在深色主题下改用黑色压暗，观感正常。\n\n如果你坚持用浅色主题 + 视频壁纸：文字能看清，但壁纸会被洗淡——这是平台限制，不是程序没做好。',
   wallpaperFollowDescription:
     '授权一个壁纸目录后，可直接从下拉列表里挑壁纸，不必每次重新找文件。仅 Chrome / Edge 支持',
   wallpaperFollowEnable: '选择壁纸目录',

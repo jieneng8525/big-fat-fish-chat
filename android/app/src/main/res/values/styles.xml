@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+      基础主题。
+      父主题从 Light.DarkActionBar 改成 DayNight.NoActionBar：
+      - Light 父主题会用系统默认的浅色给状态栏/导航栏上色，
+        深色壁纸下表现为顶部一条灰带压在内容上（实机截图确认）
+      - DayNight 会跟随系统深浅色，与网页自身的主题切换方向一致
+    -->
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:background">@null</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <!--
+      ⚠ MainActivity 实际使用的是这个主题（见 AndroidManifest.xml），
+      不是 AppTheme.NoActionBar。之前把透明状态栏只写进 NoActionBar，
+      等于写给了没人用的主题，灰栏自然纹丝不动。
+
+      它继承 Theme.SplashScreen，用于启动闪屏；这里补上状态栏透明配置，
+      让启动结束后 WebView 直接铺到屏幕边缘。
+    -->
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="android:background">@drawable/splash</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
+    </style>
+</resources>

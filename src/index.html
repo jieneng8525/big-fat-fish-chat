@@ -2,7 +2,12 @@
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <!--
+      viewport-fit=cover 让页面铺到刘海/圆角区域，
+      配合 CSS 里的 env(safe-area-inset-*) 才能正确避让系统栏。
+      不加这个时，Android WebView 会把内容限制在安全区内，壁纸铺不满。
+    -->
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <meta name="theme-color" content="#ffffff" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>大肥鱼Chat</title>

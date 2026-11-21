@@ -14,7 +14,10 @@ export const Welcome = () => {
       <div className={styles.welcome}>
         <div className={styles.greeting}>{t('welcomeMessageChat250808')}</div>
         <ChatInput sessionId={null} />
-        {isMobile ? <div className={styles.caveat}>{t('contentCaveat')}</div> : null}
+        {/*
+          AI 内容提示只在侧边栏底部显示一条（见 Sider.tsx）。
+          这里原来移动端也放了一条，安卓上会和侧边栏那条同时可见，属于重复。
+        */}
       </div>
     </div>
   )

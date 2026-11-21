@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Android 15（API 35）起强制 edge-to-edge：系统不再让应用控制状态栏底色，
+      但如果不显式声明透明，旧的主题会在状态栏区域留下一层系统默认色
+      ——表现就是顶部一条与界面无关的色带（实机截图确认过）。
+      这里显式声明透明，让 WebView 的背景铺到屏幕最上方。
+    -->
+    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:background">@null</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
+</resources>

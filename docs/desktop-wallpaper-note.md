@@ -24,7 +24,34 @@ Wallpaper Engine 这类软件把动态壁纸渲染在**桌面合成层**上，�
 | **Chrome / Edge** | ✅ **可跨重启保持授权** | 支持 File System Access API，授权目录后可勾选「每次访问都允许」，之后无需重复选择 |
 | Firefox | ❌ 不支持 | 没有 File System Access API |
 | Safari | ❌ 不支持 | 没有 File System Access API |
+| **Android App（Capacitor）** | ❌ 不支持 | `showDirectoryPicker` 这个函数存在，但系统层没有实现，调用必然失败（详见下节） |
 | **DSH 侧栏（Electron）** | ⚠️ 每次都要点一次 | Electron 未实现持久权限，「用户手势要求」导致每次启动都需重新点击授权 |
+
+### Android App 为什么不行（这条特别容易误判）
+
+**不能只靠「`showDirectoryPicker` 存不存在」来判断能力。**
+
+安卓 WebView（Capacitor 8 / Android 17 实测）里：
+
+```js
+typeof window.showDirectoryPicker === 'function'   // → true
+```
+
+函数**存在**，所以只看这一条会把入口渲染出来；但**调用必然失败**，
+因为 Android WebView 没有实现底层的目录选择器。用户看到按钮、点了没反应。
+
+正确判断：先排除原生壳。
+
+```ts
+// src/services/wallpaperFollow.ts
+const capacitor = window.Capacitor
+if (capacitor?.isNativePlatform?.() === true) return false
+return typeof window.showDirectoryPicker === 'function'
+```
+
+**在 App 里选壁纸只能用「手动导入」**：点选择后走 `<input type="file">`，
+系统会拉起相册／文件管理器，图片和视频都能选。
+代价是没有「下拉快速切换」——想换一张就得重新选一次文件。
 
 ### Firefox / Safari 为什么不行
 

@@ -471,3 +471,37 @@
     max-width: 100%;
   }
 }
+/*
+ * 视频壁纸 + 浅色主题的警告块。
+ *
+ * 用醒目底色 + 左边框，而不是只靠文字颜色——用户扫一眼设置页就该注意到。
+ * 颜色取自状态错误的 token，深浅主题下都够显眼。
+ */
+.wallpaperWarn {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--dsw-alias-state-error-primary);
+  border-radius: 6px;
+  /*
+   * 只声明一条 background。之前写成两行（先实色、再 color-mix），
+   * 后者会覆盖前者，而 color-mix 在旧 WebView 里不被支持时整条失效，
+   * 结果是没有底色——所以这里用带透明度的 rgba 直接算好，不依赖 color-mix。
+   * 红系取 error token 的色值，8% 不透明度既醒目又不糊住文字。
+   */
+  background: rgba(236, 19, 19, 0.08);
+}
+
+.wallpaperWarnTitle {
+  margin-bottom: 4px;
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.wallpaperWarnBody {
+  font-size: 12px;
+  line-height: 19px;
+  color: var(--dsw-alias-label-secondary);
+  white-space: pre-line;
+}

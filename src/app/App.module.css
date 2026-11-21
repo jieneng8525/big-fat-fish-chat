@@ -4,12 +4,54 @@
   display: flex;
   overflow: hidden;
   /*
+   * 必须显式设置 border-box。
+   *
+   * 下面加了 safe-area 的 padding，而默认的 content-box 会让 padding 加在
+   * height 之外：inset:0 定出 914 的高度，再加 24(上)+24(下) = 962，
+   * 整层比视口高出 48px。侧边栏是 absolute 参照这一层定位的，
+   * 于是底部「设置」按钮被推到视口外，只露出顶上一小条。
+   * 实测：frame rect bottom=962、innerHeight=914、boxSizing=content-box。
+   * 改成 border-box 后 padding 从 914 里扣，不再溢出。
+   */
+  box-sizing: border-box;
+  /*
    * 不铺不透明底色：底色由壁纸层兜底，否则壁纸会被这一层完全挡住。
    * isolation 建立独立的层叠上下文，让壁纸层的 z-index:-1 落在内部最底，
    * 而不是沉到页面背后被 body 背景盖住。
    */
   background-color: transparent;
   isolation: isolate;
+  /*
+   * 安卓 edge-to-edge 下的安全区避让。
+   *
+   * Capacitor 里系统栏透明，网页会铺到状态栏下方；不避让的话顶部按钮会被
+   * 状态栏图标压住。这里用 padding 给内容让出位置，而壁纸层是 absolute
+   * inset:0 的独立层、不受 padding 影响，所以壁纸依然铺满全屏。
+   *
+   * ⚠ 不要在 Android 侧给 android.R.id.content 加 padding：那会把整个 WebView
+   * 往下推，露出窗口底色，表现为状态栏下方一条全宽灰带（实测 rgb 163,163,163）。
+   * 安全区一律交给 CSS 处理。
+   */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  /*
+   * 必须在这里重新声明 color，不能依赖继承。
+   *
+   * 原因：CSS 变量在「声明它的元素」上解析，子元素继承到的是解析后的最终值。
+   * body/global.css 里写了 `color: var(--dsw-alias-label-primary)`，
+   * 那一步就把颜色定死成了 body 上的值（浅色主题 = 深色字）。
+   * 之后 .onDarkWallpaper 在 .frame 上覆盖了 --dsw-alias-label-primary，
+   * frame 内部的元素虽然能读到新变量值，但 color 早已继承成深色，
+   * 不会因为变量变了而重新计算 —— 表现就是「变量对了、字还是黑的」。
+   *
+   * 实测证据（安卓模拟器 + CDP）：
+   *   frame  --dsw-alias-label-primary = #f9fafb（白）
+   *   frame  color                      = rgb(15,17,21)（深）
+   * 补上这一行后两者才一致。
+   */
+  color: var(--dsw-alias-label-primary);
 }
 
 .main {

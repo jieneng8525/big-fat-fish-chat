@@ -9,3 +9,35 @@ build/
 .env.*
 !.env.example
 tmp/
+
+# ---------------------------------------------------------------------------
+# Android 工程（Capacitor）
+#
+# 只提交「工程源码」，不提交构建产物和本机配置。
+# android/ 整个目录有 32MB，其中约 30MB 是 app/build 里的中间产物，
+# 全提交进去会让仓库体积失控，而且每次构建都在变。
+# ---------------------------------------------------------------------------
+
+# Gradle 与 AGP 的产物
+android/.gradle/
+android/build/
+android/app/build/
+android/capacitor-cordova-android-plugins/build/
+
+# 本机 SDK 路径（各人不同，且含本地绝对路径）
+android/local.properties
+android/capacitor.settings.gradle
+
+# IDE 配置
+android/.idea/
+android/*.iml
+android/app/*.iml
+
+# 构建进 APK 的网页副本：由 `cap sync` 从 dist/ 生成，不需要进版本库
+android/app/src/main/assets/public/
+
+# KeyStore 与签名文件，绝不入库
+*.jks
+*.keystore
+android/app/*.jks
+android/app/*.keystore

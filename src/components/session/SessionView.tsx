@@ -44,10 +44,12 @@ export const SessionView = ({
           <div className={styles.inputContainer}>
             <ChatInput sessionId={session.id} />
             {/*
-              AI 内容提示：桌面端移到侧边栏底部（见 Sider.tsx），
-              这里只在移动端保留——移动端侧边栏是抽屉，不常驻，提示放那里看不见。
+              AI 内容提示不放在这里。
+              原来移动端会在输入框下方再放一条，但：
+              1. 侧边栏底部已经常驻一条，安卓上两处同时可见，等于重复
+              2. 这一层贴在输入框底部，会在输入框下缘压出一道横条（安卓实机看到的是黑角）
+              统一只在 Sider.tsx 里显示一条。
             */}
-            {isMobile ? <div className={styles.caveat}>{t('contentCaveat')}</div> : null}
           </div>
         }
       />

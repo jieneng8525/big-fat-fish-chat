@@ -193,6 +193,8 @@ export const en = {
   wallpaperErrorRead: 'Failed to load wallpaper. Please try again.',
   wallpaperErrorTooLarge: 'File is too large. Please pick a smaller one.',
   wallpaperFollowLabel: 'Pick from wallpaper folder',
+wallpaperVideoWarnTitle: '⚠⚠⚠ Video wallpapers look washed out in light theme',
+  wallpaperVideoWarnBody: '⚠⚠⚠ Strongly recommended: switch to the dark theme.\n\nWhy: Android WebView cannot read pixels from video frames, so the app cannot tell whether a video is light or dark. It falls back to a fixed translucent white film to keep text readable — which visibly washes out the video and loses detail.\n\nImage wallpapers are unaffected (their brightness is measured correctly and the overlay is balanced automatically). In dark theme, videos use a dark overlay instead and look normal.\n\nIf you keep light theme + video wallpaper: text stays readable, but the wallpaper will look faded. This is a platform limitation, not an unfinished feature.',
   wallpaperFollowDescription:
     'Grant access to a wallpaper folder, then pick from a dropdown instead of browsing for files every time. Chrome / Edge only',
   wallpaperFollowEnable: 'Choose folder',

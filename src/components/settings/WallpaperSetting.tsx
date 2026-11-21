@@ -206,6 +206,23 @@ export const WallpaperSetting = () => {
       </div>
 
       {/*
+        视频壁纸 + 浅色主题的强烈警告。
+
+        为什么只对视频提示：图片壁纸能正常读到像素，蒙版浓度是按实际亮度算的；
+        而 Android WebView 对硬件解码的视频帧 getImageData 会抛 SecurityError，
+        亮度恒为 null，只能退回到固定的 45% 白纱兜底——壁纸会被明显洗白。
+
+        为什么不干脆自动切深色配色：那会连侧边栏、输入框一起变深，
+        用户选了浅色主题却得到深色界面，是用一个问题换另一个（已经踩过）。
+      */}
+      {wallpaper?.kind === 'video' ? (
+        <div className={styles.wallpaperWarn} role="note">
+          <div className={styles.wallpaperWarnTitle}>{t('wallpaperVideoWarnTitle')}</div>
+          <div className={styles.wallpaperWarnBody}>{t('wallpaperVideoWarnBody')}</div>
+        </div>
+      ) : null}
+
+      {/*
         跟随桌面壁纸：只有支持 File System Access API 的浏览器才显示。
         不支持时整个入口隐藏，避免出现点了没反应的按钮（见 docs/desktop-wallpaper-note.md）。
       */}
