@@ -41,17 +41,15 @@ A **fully static** chat client built on the official [DeepSeek](https://www.deep
 
 Open the deployed URL and enter your own [DeepSeek API key](https://platform.deepseek.com/api_keys) in Settings the first time.
 
-### Option 2: Download and run — nothing to install
+### Option 2: Build it yourself
 
-Download the archive from [Releases](releases), extract it, and **double-click `index.html`**. No Node.js, no build step.
-
-### Option 3: Build it yourself
+No prebuilt archive is published. This repo intentionally ships **no** precompiled bundles or APKs — see [Why there are no downloads](#why-there-are-no-downloads).
 
 Requires Node.js 20 or newer:
 
 ```sh
-git clone https://github.com/<your-name>/<repo-name>.git   # replace with this repo's address
-cd <repo-name>
+git clone https://github.com/jieneng8525/big-fat-fish-chat.git
+cd big-fat-fish-chat
 corepack pnpm install
 corepack pnpm dev     # dev server at http://localhost:8090
 ```
@@ -189,6 +187,16 @@ corepack pnpm build   # production build
 Stack: React 18 + TypeScript + Zustand + Rspack (SWC).
 
 **Note**: after running `pnpm build`, the old `dist/` stays around. Delete it before starting the dev server again — otherwise the dev server also serves those stale files as static assets, which shows up as hot-reload 404s and CSS being served as `text/html`.
+
+## Why there are no downloads
+
+This repository publishes **no prebuilt artifacts** — no zipped web bundle, no APK. That is deliberate, not an oversight.
+
+**For the web build** it would be trivial to attach a zip. It is still not done, because a prebuilt bundle inevitably drifts from the source and gives people no way to verify what they are running. Building takes one command.
+
+**For the Android APK the stakes are higher.** A `cap:apk` build uses the Android SDK's debug certificate, whose private key is **identical on every machine that has the SDK installed**, with the password `android`. Anyone can re-sign a modified app with the same certificate and Android will treat it as a legitimate update — same package name, same signature, so it installs over the real one and **keeps your existing data**. Distributing such an APK from this repo would put that risk on everyone who installed it.
+
+If you need an APK, build and sign it yourself with a key only you hold. See [`docs/android-distribution-warning.md`](docs/android-distribution-warning.md) for the full reasoning and the three steps.
 
 ## Known limitations
 

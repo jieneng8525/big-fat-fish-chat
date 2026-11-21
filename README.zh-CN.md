@@ -41,17 +41,15 @@
 
 打开部署好的网址，首次使用时在设置里填自己的 [DeepSeek API Key](https://platform.deepseek.com/api_keys) 即可。
 
-### 方式二：下载即用，不装任何东西
+### 方式二：自己构建
 
-从 [Releases](releases) 下载压缩包，解压后**双击 `index.html`** 就能在本地使用，无需安装 Node.js，无需构建。
-
-### 方式三：自己构建
+本仓库**不提供预编译的压缩包或 APK**，原因见[为什么不提供下载](#为什么不提供下载)。
 
 需要 Node.js 20 或以上：
 
 ```sh
-git clone https://github.com/<你的用户名>/<仓库名>.git   # 换成这个仓库的真实地址
-cd <仓库名>
+git clone https://github.com/jieneng8525/big-fat-fish-chat.git
+cd big-fat-fish-chat
 corepack pnpm install
 corepack pnpm dev     # 开发服务器：http://localhost:8090
 ```
@@ -185,6 +183,16 @@ corepack pnpm build   # 生产构建
 技术栈：React 18 + TypeScript + Zustand + Rspack（SWC）。
 
 **注意**：跑过 `pnpm build` 之后 `dist/` 会留着旧产物。下次启动 dev 前先删掉它，否则 dev server 会把 `dist` 里的旧文件也当静态资源返回，表现为热更新报 404、CSS 被当成 `text/html`。
+
+## 为什么不提供下载
+
+本仓库**不发布任何预编译产物**——没有网页版压缩包，也没有 APK。这是有意的，不是忘了做。
+
+**网页版**：挂个 zip 其实很容易。不做，是因为预编译包一定会和源码慢慢脱节，而使用者又无从核对手里跑的是哪一版。自己构建只有一条命令。
+
+**APK 的风险要大得多。** `cap:apk` 打出来的包用的是 Android SDK 自带的调试证书，而**这把证书的私钥在所有装了 SDK 的机器上都一样**，密码固定为 `android`。任何人都可以用同一张证书给改过的应用重新签名，Android 会认为这是正常更新——包名相同、签名相同，于是覆盖安装并**保留你原有的数据**。从这个仓库分发 APK，等于把这个风险摊给每一个安装的人。
+
+需要 APK 就自己构建、用只有你掌握的密钥签名。完整理由和三个步骤见 [`docs/android-distribution-warning.md`](docs/android-distribution-warning.md)。
 
 ## 已知限制
 
