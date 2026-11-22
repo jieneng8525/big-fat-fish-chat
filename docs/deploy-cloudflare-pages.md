@@ -1,4 +1,20 @@
-# Cloudflare Pages 部署配置
+# 静态托管部署（Cloudflare Pages / Netlify）
+
+## 〇、为什么有两份部署
+
+同一份 `dist` 同时部署到了两处，**内容完全一致，只为解决国内可达性**：
+
+| 地址 | 国内直连 | 说明 |
+| --- | --- | --- |
+| `https://big-fat-fish-chat.netlify.app/` | ✅ 能打开 | **国内请用这个** |
+| `https://big-fat-fish-chat.pages.dev/` | ❌ 时通时不通 | `pages.dev` 在国内被间歇性干扰，需要代理 |
+
+实测（国内网络、不走代理）：`*.netlify.app` 的多个站点均返回 200；
+`big-fat-fish-chat.pages.dev` 与 `dash.cloudflare.com` 均超时，而同为 Cloudflare 的
+`www.cloudflare.com` 正常 —— 说明是**部分域名被针对**，不是 Cloudflare 整体不可用。
+
+两边的免费子域都可能随时间变化，所以**保留两个地址**，哪个能用用哪个。
+真要长期稳定，只能换自己的域名。
 
 ## 一、这个项目部署时要注意什么
 
@@ -31,6 +47,25 @@ favicon 会 404。
 | Node version | 20 或以上（环境变量 `NODE_VERSION=20`） |
 
 **构建不需要任何环境变量。** 项目不内置 Key，产物里也不会有 Key。
+
+### Netlify 的填法（与上面同一份产物）
+
+Netlify 新版控制台是 Import from Git 或直接拖 `dist` 文件夹。连仓库时填：
+
+| 配置项 | 值 |
+| --- | --- |
+| Branch to deploy | `main` |
+| Base directory | 留空（或 `/`） |
+| Build command | `corepack pnpm install && corepack pnpm build` |
+| Publish directory | `dist` |
+| Node version | `20` |
+
+注意两点：
+
+1. **新站点默认是私有的**，直接访问会返回 `401 Unauthorized`。
+   要在项目里点 **Make it public**（或在 Access & security 里关掉访问控制），
+   公开之后才是 200。
+2. Netlify 的 `Publish directory` 必须是 `dist`，留空会找不到 `index.html`。
 
 ## 三、怎么确认部署的产物是安全的
 

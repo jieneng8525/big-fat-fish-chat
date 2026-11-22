@@ -2,7 +2,9 @@
 
 [English](README.md) | 简体中文
 
-**▶ 在线使用：<https://big-fat-fish-chat.pages.dev/>**
+**▶ 在线使用：<https://big-fat-fish-chat.netlify.app/>**
+
+另有一个部署在 <https://big-fat-fish-chat.pages.dev/>。**国内请用 Netlify 那个** —— `pages.dev` 这个域名在国内时通时不通、要挂代理，`netlify.app` 能直连打开。两边部署的是同一个提交、同一份产物。
 
 大肥鱼自己做的一个 DeepSeek 聊天客户端。自带 API Key 即可使用，不用注册、不经过任何第三方服务器。
 
@@ -201,6 +203,7 @@ corepack pnpm build   # 生产构建
 - **提示词在前端**：用户改一下代码就能改，不能当作安全边界。
 - **没有多端同步**：数据在本机，换设备就是空的，除非手动导出导入。
 - **DeepSeek 导出的 ZIP 里没有文档原件**：包里只有图片。文档类附件导入后能看到文件名和大小，但点了打不开——因为根本没有文件可打开。这是上游导出格式的限制，不是导入代码或设计的问题；实测一份真实归档 1773 个条目：图片 751、JSON 1022、docx/doc/pdf **0**。详见 [`src/services/chat/history/README.md`](src/services/chat/history/README.md)。
+- **`pages.dev` 在国内不稳定**：这个域名时通时不通，可能需要挂代理。正因为如此才额外部署了一份到 `netlify.app`，那个能直连打开。这是那两个免费域名的属性，不是本项目的问题——两个都不行的话，把 `dist/` 目录扔到任何静态托管上都能用。
 
 ## 致谢
 

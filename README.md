@@ -2,7 +2,9 @@
 
 English | [简体中文](README.zh-CN.md)
 
-**▶ Try it now: <https://big-fat-fish-chat.pages.dev/>**
+**▶ Try it now: <https://big-fat-fish-chat.netlify.app/>**
+
+Also deployed at <https://big-fat-fish-chat.pages.dev/>. **Use the Netlify one from mainland China** — the `pages.dev` domain is intermittently unreachable there and needs a proxy, while `netlify.app` opens directly. Both serve the same build from the same commit.
 
 Built and maintained by 大肥鱼 (Big Fat Fish). Bring your own DeepSeek API key — no sign-up, no server of ours.
 
@@ -205,6 +207,7 @@ If you need an APK, build and sign it yourself with a key only you hold. See [`d
 - **Prompts live in the frontend**: anyone can edit the code to change them, so they are not a security boundary.
 - **No cross-device sync**: data is local, so a new device starts empty unless you export and import manually.
 - **DeepSeek's exported ZIP contains no document originals**: only images are bundled. Document attachments keep their name and size after import but cannot be opened, because there is no file to open. This is a limit of the upstream export format, not of the import code — verified against a real archive (1773 entries: 751 images, 1022 JSON, 0 docx/doc/pdf). See [`src/services/chat/history/README.md`](src/services/chat/history/README.md).
+- **`pages.dev` is unreliable in mainland China**: that domain is intermittently blocked there and may need a proxy. The `netlify.app` deployment exists for exactly this reason and opens directly. This is a property of those free domains, not of this project — self-host the `dist/` folder anywhere if neither works for you.
 
 ## Credits
 
