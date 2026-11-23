@@ -85,6 +85,30 @@
 }
 
 /*
+ * 屏幕阅读器式隐藏：元素仍然参与渲染，只是被裁成 1px 看不见。
+ *
+ * ⚠ 不能用 display:none / hidden —— 那样 Chromium 会拒绝程序化
+ * input.click() 打开文件选择器，点击「相册」将毫无反应（真机踩过）。
+ * position:fixed 而不是 absolute，避免在滚动容器里撑出额外高度。
+ */
+.srOnly {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/*
  * 深色壁纸下这是浮在壁纸上的半透明块，需要一点背景模糊才认得清。
  * 浅色主题（body 不带 data-ds-dark-theme）不加，避免发灰。
  */

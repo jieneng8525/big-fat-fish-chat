@@ -268,4 +268,32 @@ Three separate `<input type="file">` elements do the work; the differences are e
 
 **All three inputs stay mounted.** Chromium only honours `input.click()` inside the user-gesture task; mounting the input after a close animation detaches the click from the gesture and the picker never opens. The sheet animates `grid-template-rows: 0fr → 1fr` and the inputs live outside that.
 
+### ⚠ The inputs must NOT use `hidden`
+
+This cost a round. `hidden` compiles to `display: none`, and **Chromium refuses to open the file chooser from a programmatic `input.click()` when the element is not rendered**. The button's click handler fires, `galInput.click()` fires, and then nothing happens — no Activity starts, and logcat shows no `onShowFileChooser` at all, because the request never leaves the renderer.
+
+Measured on the real device:
+
+| Input style | `getComputedStyle().display` | After clicking 相册 |
+|---|---|---|
+| `hidden` | `none` | `topResumedActivity` stays `chat.bigfatfish.app/.MainActivity` |
+| `className={styles.srOnly}` | `block` | `topResumedActivity=com.android.photopicker/.PhotopickerGetContentActivity` |
+
+`srOnly` is the screen-reader pattern: 1px box, `clip` + `clip-path: inset(50%)`, `opacity: 0`, `pointer-events: none`. It keeps the element rendered (so the chooser opens) while taking no visible space.
+
+The first version of `AttachmentSheet.tsx` carried a comment claiming "hidden does not affect `click()`; Chromium allows the picker from a hidden input". That comment was wrong and has been removed. Do not put it back.
+
+### Verifying taps on a real device
+
+`adb shell input tap x y` takes **physical** pixels, but `getBoundingClientRect()` returns CSS pixels. Multiply by `devicePixelRatio` (3.5 on the test device) or the tap lands somewhere else entirely — a common failure mode here was tapping the backdrop and closing the sheet instead of hitting the action button:
+
+```js
+// via CDP
+const r = btn.getBoundingClientRect()
+const cx = (r.x + r.width / 2) * window.devicePixelRatio
+const cy = (r.y + r.height / 2) * window.devicePixelRatio
+```
+
+Also prefer `adb shell uiautomator dump` → read `bounds="[l,t][r,b]"` over guessing from a screenshot preview, which is usually downscaled.
+
 `capture` is only applied when `isNative()` — on the web a `capture` hint does nothing useful on desktop and can confuse mobile Safari.

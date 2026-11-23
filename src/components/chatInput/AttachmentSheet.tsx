@@ -123,15 +123,26 @@ export const AttachmentSheet = ({
       </div>
 
       {/*
-        三个 input 常驻，不放进 open 条件里。
-        hidden 属性（display:none）不影响 click()，Chromium 允许对隐藏 input 触发选择器。
+        ⚠ 三个 input 用视觉隐藏（.srOnly），**不能用 hidden**。
+
+        我第一版写的是 hidden，注释里还写着「hidden 不影响 click()」—— 那是错的。
+        hidden 会落成 display:none，而 Chromium 对程序化 input.click() 打开
+        文件选择器的要求是元素必须可渲染：display:none 的元素会被直接忽略，
+        选择器根本不出来。真机实测：点击「相册」后 topResumedActivity 仍是
+        MainActivity，没有拉起任何 Activity，logcat 里连 onShowFileChooser 都没调用。
+
+        .srOnly 是 1px + clip，元素仍然被渲染，选择器正常弹出，又不会在界面上
+        占位。三个 input 也必须常驻（不能放进 open 条件里）：Chromium 只在用户
+        手势的同一个任务里认可 click()，等动画结束再挂载就脱离了手势上下文。
       */}
       <input
         ref={cameraRef}
         type="file"
         accept="image/*"
         capture={isNative() ? 'environment' : undefined}
-        hidden
+        className={styles.srOnly}
+        tabIndex={-1}
+        aria-hidden
         onChange={handleChange}
       />
       <input
@@ -139,10 +150,21 @@ export const AttachmentSheet = ({
         type="file"
         accept="image/*"
         multiple
-        hidden
+        className={styles.srOnly}
+        tabIndex={-1}
+        aria-hidden
         onChange={handleChange}
       />
-      <input ref={fileRef} type="file" accept={ACCEPT} multiple hidden onChange={handleChange} />
+      <input
+        ref={fileRef}
+        type="file"
+        accept={ACCEPT}
+        multiple
+        className={styles.srOnly}
+        tabIndex={-1}
+        aria-hidden
+        onChange={handleChange}
+      />
     </>
   )
 }
