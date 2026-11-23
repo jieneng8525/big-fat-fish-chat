@@ -1,16 +1,21 @@
 /*
- * 附件面板：仿官方 App —— 输入框下方升起一排「拍照 / 相册 / 文件」，
- * 灰底圆角大块，图标在上、文字在下。
+ * ⚠ 遮罩必须比面板低，否则它会把面板整个盖住。
  *
- * 面板占据文档流（不是 position: fixed 浮层），这样输入框会被自然顶上去，
- * 而不是盖住输入框。高度用 max-height 从 0 过渡到实际高度。
+ * 第一版给这条设了 z-index: 40 而 .sheet 没设，结果是：遮罩 position:fixed
+ * inset:0 铺满全屏且盖在面板上面，**任何真实点击都先被遮罩吃掉**，
+ * 然后触发 onClose 把面板关掉。表现出来的就是「三个按钮点了没反应」。
+ *
+ * 为什么当时没测出来：我用脚本 element.click() 验证，那是直接调用元素的
+ * 点击处理，绕过了命中测试（hit-testing），所以按钮照样响应。
+ * 只有真实触摸才会暴露出遮挡问题 —— 这也是必须在真机上点、不能只看脚本的原因。
+ *
+ * 现在：遮罩 z-index 30，面板 31，面板永远在遮罩之上。
  */
-
 .backdrop {
   position: fixed;
   inset: 0;
-  /* 低于设置弹窗（1000），高于内容区 */
-  z-index: 40;
+  /* 低于设置弹窗（1000），低于面板（31） */
+  z-index: 30;
   background: transparent;
 }
 
@@ -18,6 +23,9 @@
   /* 用 grid 的 1fr 过渡高度：0fr → 1fr 可以纯 CSS 做到，不需要测量真实高度 */
   display: grid;
   grid-template-rows: 0fr;
+  /* 必须高于遮罩，见 .backdrop 的说明 */
+  position: relative;
+  z-index: 31;
   width: 100%;
   overflow: hidden;
   visibility: hidden;

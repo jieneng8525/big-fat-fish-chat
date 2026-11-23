@@ -73,7 +73,12 @@ export const AttachmentSheet = ({
       {open ? (
         <div
           className={styles.backdrop}
-          onClick={onClose}
+          onClick={(event) => {
+            // 只认点在遮罩自身上的点击；子元素冒泡上来的不算，避免误关面板
+            if (event.target === event.currentTarget) {
+              onClose()
+            }
+          }}
           role="presentation"
           data-testid="attachment-sheet-backdrop"
         />
