@@ -525,6 +525,73 @@ export const IconToastError16 = () => (
 )
 
 /**
+ * 附件面板用的三个图标（拍照 / 相册 / 文件）。
+ *
+ * 用 24 的 viewBox 而不是 16：面板里的图标实际渲染在 24px 上，
+ * 16 的 viewBox 放大到 24 会糊，描边比例也不对。
+ * 描边统一 1.6，在 24px 下视觉上与 16px 的 1.2 等价。
+ */
+const PANEL_ICON_PROPS = {
+  width: 24,
+  height: 24,
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  xmlns: 'http://www.w3.org/2000/svg',
+  'aria-hidden': true,
+} as const
+
+/** 拍照：相机机身 + 顶部快门凸起 + 镜头圆 */
+export const IconCameraOutline24 = () => (
+  <svg {...PANEL_ICON_PROPS}>
+    <path
+      d="M3.5 8.6c0-1.16.94-2.1 2.1-2.1h1.55c.5 0 .97-.25 1.25-.67l.6-.9a1.5 1.5 0 0 1 1.25-.66h3.5a1.5 1.5 0 0 1 1.25.66l.6.9c.28.42.75.67 1.25.67h1.55c1.16 0 2.1.94 2.1 2.1v8.2c0 1.16-.94 2.1-2.1 2.1H5.6a2.1 2.1 0 0 1-2.1-2.1v-8.2Z"
+      stroke="currentColor"
+      strokeWidth="1.6"
+    />
+    <circle cx="12" cy="12.6" r="3.4" stroke="currentColor" strokeWidth="1.6" />
+  </svg>
+)
+
+/** 相册：圆角方框 + 远处的小太阳 + 两段山脊 */
+export const IconGalleryOutline24 = () => (
+  <svg {...PANEL_ICON_PROPS}>
+    <rect x="3.2" y="4.4" width="17.6" height="15.2" rx="3" stroke="currentColor" strokeWidth="1.6" />
+    <circle cx="9" cy="9.9" r="1.6" stroke="currentColor" strokeWidth="1.5" />
+    <path
+      d="M3.7 16.2l3.7-3.6a1.6 1.6 0 0 1 2.2 0l2.6 2.5m0 0l1.9-1.8a1.6 1.6 0 0 1 2.2 0l4.1 4"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
+/** 文件：一页纸 + 右上角折角 + 两条内容线 */
+export const IconFileOutline24 = () => (
+  <svg {...PANEL_ICON_PROPS}>
+    <path
+      d="M13.4 3.4H7.2a2.4 2.4 0 0 0-2.4 2.4v12.4a2.4 2.4 0 0 0 2.4 2.4h9.6a2.4 2.4 0 0 0 2.4-2.4V9.4l-5.8-6Z"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M13.2 3.6v5.2h5.4"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M8.6 13.2h6.8M8.6 16.6h4.6"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+    />
+  </svg>
+)
+
+/**
  * 应用 Logo：品牌蓝圆角方块 + 白色对话气泡 + 蓝色声波。
  *
  * 为什么是填充色而不是线条：favicon 只有 16px，线条图形在那个体积下会糊成一团；

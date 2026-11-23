@@ -39,4 +39,52 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+      语音输入（getUserMedia 录音）和拍照（<input capture>）都靠这两个权限。
+
+      ⚠ 只声明还不够，必须同时具备运行时申请。但**运行时申请 Capacitor 已经做好了**，
+      不要自己再写一套 —— 我第一版就多写了一个 WebPermissionBridge，然后删掉了。
+
+      真正的链路是这样的（Capacitor 8.6.2）：
+
+        BridgeWebChromeClient.onPermissionRequest()
+          → 把 RESOURCE_AUDIO_CAPTURE 翻译成 MODIFY_AUDIO_SETTINGS + RECORD_AUDIO
+          → permissionLauncher.launch(permissions)        // 系统对话框
+          → 用户点允许后 request.grant(...)
+
+        BridgeWebChromeClient.isMediaCaptureSupported()
+          → PermissionHelper.hasDefinedPermission(CAMERA)  // 查的是 manifest！
+          → 没声明时返回 false，反过来去申请 CAMERA……
+
+      关键点：PermissionHelper.hasDefinedPermission() 读的是 **AndroidManifest**，
+      不是运行时状态。所以 manifest 里没有这两行时：
+        - 语音：launch() 申请的是「未声明」的权限，系统直接静默拒绝，
+                PermissionListener 拿到 false → request.deny() →
+                网页端 getUserMedia 抛 NotAllowedError，表现为「点了没反应」
+        - 拍照：isMediaCaptureSupported() 走 !hasDefinedPermission 分支返回 true，
+                看似放行，但相机 Activity 自己没有 CAMERA 权限，拍完拿不到数据
+
+      这就是 App 之前「麦克风没权限、相机没权限」的全部原因。
+      实测：安装后的 APK `dumpsys package` 里只有 INTERNET 一条，
+      设备本身 `pm list features` 有 android.hardware.microphone 和 camera.any。
+
+      uses-feature 声明成 required="false"：缺麦克风或摄像头的设备
+      （个别平板、无前摄机型）只是少一个功能，不该因此装不上。
+    -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Capacitor 的 onPermissionRequest 会把 MODIFY_AUDIO_SETTINGS 一起申请，
+         不声明的话它同样会被静默拒绝，进而让整个 audio 请求失败 -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
+    <!--
+      声明 CAMERA 权限会让 Gradle 自动隐式加上 android.hardware.camera（后摄）的
+      uses-feature，而且是 required=true。实测 `aapt2 dump badging` 里能看到这一条：
+        uses-feature: name='android.hardware.camera'
+      显式再声明一次 required="false" 才能覆盖掉它，否则只有前摄的设备装不上。
+    -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 </manifest>

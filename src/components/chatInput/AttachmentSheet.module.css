@@ -1,0 +1,94 @@
+/*
+ * 附件面板：仿官方 App —— 输入框下方升起一排「拍照 / 相册 / 文件」，
+ * 灰底圆角大块，图标在上、文字在下。
+ *
+ * 面板占据文档流（不是 position: fixed 浮层），这样输入框会被自然顶上去，
+ * 而不是盖住输入框。高度用 max-height 从 0 过渡到实际高度。
+ */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  /* 低于设置弹窗（1000），高于内容区 */
+  z-index: 40;
+  background: transparent;
+}
+
+.sheet {
+  /* 用 grid 的 1fr 过渡高度：0fr → 1fr 可以纯 CSS 做到，不需要测量真实高度 */
+  display: grid;
+  grid-template-rows: 0fr;
+  width: 100%;
+  overflow: hidden;
+  visibility: hidden;
+  transition:
+    grid-template-rows 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    visibility 0s linear 0.22s;
+}
+
+.open {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  transition:
+    grid-template-rows 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    visibility 0s;
+}
+
+.actions {
+  display: flex;
+  min-height: 0;
+  gap: 10px;
+  padding: 10px 0 2px;
+}
+
+.action {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  /* 截图里约是 1:1.05 的竖长方形，留够点按面积 */
+  min-height: 96px;
+  padding: 14px 4px;
+  border: none;
+  border-radius: 16px;
+  /* 主题里已有的灰底：浅色 rgba(0,0,0,.04)，深色 rgba(255,255,255,.08)。
+     深色下再叠一层，见文件末尾的 [data-ds-dark-theme] 规则。 */
+  background: var(--dsw-alias-bg-skeleton);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+.actionIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dsw-alias-label-primary);
+}
+
+.actionLabel {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/*
+ * 深色壁纸下这是浮在壁纸上的半透明块，需要一点背景模糊才认得清。
+ * 浅色主题（body 不带 data-ds-dark-theme）不加，避免发灰。
+ */
+[data-ds-dark-theme] .action {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+}

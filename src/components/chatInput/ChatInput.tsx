@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { memo, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   IconGlobeLanguageOutline14,
   IconPaperclipOutline16,
@@ -26,7 +26,8 @@ import { Tooltip } from '../base/Tooltip.js'
 import { ensureApiKey } from '../settings/settingsDialogState.js'
 import { DragMask, useFileDrop } from './DragMask.js'
 import { showToast } from '../base/toastState.js'
-import { ACCEPT, useUploads } from '../../services/attachments.js'
+import { useUploads } from '../../services/attachments.js'
+import { AttachmentSheet } from './AttachmentSheet.js'
 import { DraftAttachments } from './DraftAttachments.js'
 import { useVoiceInput } from './useVoiceInput.js'
 import { VoiceButton } from './VoiceButton.js'
@@ -53,7 +54,8 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
   const importingHistory = useChatStore((state) => state.importingHistory)
   const isMobile = useIsMobile()
   const search = useSettings((state) => state.search)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  /** 附件面板是否展开（拍照 / 相册 / 文件） */
+  const [sheetOpen, setSheetOpen] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const togglesRef = useRef<HTMLDivElement>(null)
 
@@ -100,6 +102,26 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
     [sessionId]
   )
   const dragging = useFileDrop(acceptFiles)
+
+  /*
+   * 打开附件面板时收起键盘。
+   *
+   * 真机上键盘占掉约一半屏幕高度，面板是从输入框下方升起来的，
+   * 键盘开着的话面板会被挤得只剩一条缝。官方 App 也是点「+」就收键盘。
+   * 同时记住要不要还焦点：网面上（非移动端）没有键盘问题，保持焦点更顺手。
+   */
+  useEffect(() => {
+    if (!sheetOpen) {
+      return
+    }
+    if (isMobile) {
+      textareaRef.current?.blur()
+    }
+    // 导入历史期间附件不可用，面板没有意义
+    if (importingHistory) {
+      setSheetOpen(false)
+    }
+  }, [sheetOpen, isMobile, importingHistory])
 
   /** 转写结果插入到光标处，并把光标移到插入内容之后 */
   const voice = useVoiceInput((transcript) => {
@@ -241,24 +263,15 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
               }
             }}
           />
+          {/* 点击切换附件面板；面板负责「拍照 / 相册 / 文件」三个入口 */}
           <IconButton
             size="m"
             tone="primary"
             icon={<IconPaperclipOutline16 />}
             tooltip={t('uploadFile')}
             disabled={importingHistory}
-            onClick={() => ensureApiKey() && fileInputRef.current?.click()}
-          />
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            hidden
-            accept={ACCEPT}
-            onChange={(event) => {
-              acceptFiles(Array.from(event.target.files ?? []))
-              event.target.value = ''
-            }}
+            aria-expanded={sheetOpen}
+            onClick={() => ensureApiKey() && setSheetOpen((value) => !value)}
           />
           {streaming && sessionId ? (
             <button
@@ -286,6 +299,11 @@ const Input = ({ sessionId }: { sessionId: string | null }) => {
         </div>
       </div>
       {dragging ? <DragMask /> : null}
+      <AttachmentSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        onFiles={acceptFiles}
+      />
     </div>
   )
 }

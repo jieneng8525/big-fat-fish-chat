@@ -189,3 +189,83 @@ PowerShell's `ConvertTo-Json` escapes `&&` as `\u0026\u0026`, which the Capacito
 ### 4. PowerShell treats Gradle's stderr as failure
 
 With `gradlew.bat ... 2>&1 | Select-Object`, `$LASTEXITCODE` is `1` even on success. **Judge by the `BUILD SUCCESSFUL` string in the output, not the exit code.**
+
+---
+
+## Resolved: voice input and camera did nothing — no permissions declared
+
+**Symptom**: the mic button entered "recording" but transcription always failed, and picking a photo could never reach the camera. On the phone the app appeared to "not have asked for microphone or camera permission at all".
+
+**Root cause**: `AndroidManifest.xml` declared only `INTERNET`. That is the whole story — **Capacitor 8.6.2 already implements the runtime side correctly**; it just has nothing to ask for.
+
+The chain, from `node_modules/@capacitor/android/.../BridgeWebChromeClient.java`:
+
+| Call | What it does | What happens when the permission is not in the manifest |
+|---|---|---|
+| `onPermissionRequest` | maps `RESOURCE_AUDIO_CAPTURE` → `MODIFY_AUDIO_SETTINGS` + `RECORD_AUDIO`, then `permissionLauncher.launch(...)` | launching an **undeclared** permission is silently refused by the system → listener gets `false` → `request.deny()` → the page's `getUserMedia` throws `NotAllowedError` |
+| `isMediaCaptureSupported` | returns `hasPermissions(CAMERA) \|\| !hasDefinedPermission(CAMERA)` | `hasDefinedPermission` reads the **manifest**, so an undeclared `CAMERA` makes this return `true` — it looks allowed, the camera activity launches, but the app itself holds no `CAMERA` grant |
+
+`PermissionHelper.hasDefinedPermission()` compares against `getManifestPermissions()`, i.e. the manifest, **not** the runtime grant state. That is the detail that makes an undeclared permission look like "the plugin is broken".
+
+**Fix** — three lines in the manifest, no Java:
+
+```xml
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
+<uses-permission android:name="android.permission.CAMERA" />
+<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+```
+
+Plus `uses-feature ... required="false"` for `microphone`, `camera.any`, **and `camera`**. Declaring `CAMERA` makes Gradle implicitly require `android.hardware.camera` (rear camera), which would hide the app from devices without one. Check both lists:
+
+```powershell
+$aapt = (Get-ChildItem "$env:LOCALAPPDATA\Android\Sdk\build-tools" -Directory | Sort-Object Name -Descending)[0]
+& (Join-Path $aapt.FullName 'aapt2.exe') dump permissions android\app\build\outputs\apk\debug\app-debug.apk
+& (Join-Path $aapt.FullName 'aapt2.exe') dump badging    android\app\build\outputs\apk\debug\app-debug.apk | Select-String 'uses-feature'
+```
+
+Expected: all three `uses-permission` lines present, and every `uses-feature` line prefixed `uses-feature-not-required:`.
+
+### Do not write your own onPermissionRequest handler
+
+The first attempt here was a `WebPermissionBridge.java` implementing `ActivityCompat.requestPermissions` plus an `OnRequestPermissionsResult` callback. **It was unnecessary and was deleted.** Capacitor's `BridgeWebChromeClient` already grants/denies correctly through `registerForActivityResult`; re-implementing it risks double-requesting and loses the `MODIFY_AUDIO_SETTINGS` pairing.
+
+### Verified end to end on the real device (RMX3800, Android 16, WebView 156)
+
+Camera:
+
+1. Tap **拍照** → `dumpsys activity activities` shows `topResumedActivity=com.android.permissioncontroller/.permission.ui.GrantPermissionsActivity`
+2. Allow → `dumpsys package chat.bigfatfish.app` shows `CAMERA: granted=true`, and the top activity becomes `com.oplus.camera/.component.CapturePhotoActivity`
+3. Shutter → confirm → back in the app, and the photo appears as an attachment (`JPEG_20261123_103026_….jpg` in the input area)
+
+Microphone:
+
+1. Tap mic → logcat `OplusAudioRecordInfoUploadHelper: broadcastVoipRecordState() PackageName:chat.bigfatfish.app, isVoipNow:true`
+2. The input area swaps the textarea for a live spectrum — proof the audio graph is actually running
+3. Stop → the page issues `POST https://api.deepseek.com/v1/tools/asr` and gets `200` with `duration_ms: 65536`
+
+Note the empty transcript (`"text":""`, toast `未识别到语音内容`) is **not** a failure: audio really was captured and uploaded, there just was nobody speaking into the phone. Judge voice input by the ASR round trip, not by whether text appears.
+
+### Two gotchas while testing permissions over adb
+
+- `adb shell pm grant` fails on this ROM: `SecurityException: grantRuntimePermission: Neither user 2000 nor current process has GRANT_RUNTIME_PERMISSIONS`. Grant through the UI instead.
+- `adb shell input tap x y` uses **physical** pixels. The screenshot preview shown in a viewer is often downscaled, so coordinates read off the preview miss. Get exact bounds from `adb shell uiautomator dump` → `bounds="[l,t][r,b]"`, then tap the centre.
+
+---
+
+## Attachment sheet (拍照 / 相册 / 文件)
+
+Tapping the paperclip used to open `<input type="file">` with no `accept`, so Android dropped straight into the file manager — finding a photo meant browsing a directory tree. It now raises a sheet under the input box, matching the official app.
+
+Three separate `<input type="file">` elements do the work; the differences are entirely in `accept` / `capture`:
+
+| Entry | Attributes | Android result |
+|---|---|---|
+| 拍照 | `accept="image/*" capture="environment"` | camera opens directly |
+| 相册 | `accept="image/*" multiple` | photo picker |
+| 文件 | `accept={ACCEPT} multiple` | file manager |
+
+**`capture` must not be set on the gallery input** — any `capture` makes Android skip the picker and go straight to the camera, which is the problem being fixed.
+
+**All three inputs stay mounted.** Chromium only honours `input.click()` inside the user-gesture task; mounting the input after a close animation detaches the click from the gesture and the picker never opens. The sheet animates `grid-template-rows: 0fr → 1fr` and the inputs live outside that.
+
+`capture` is only applied when `isNative()` — on the web a `capture` hint does nothing useful on desktop and can confuse mobile Safari.
